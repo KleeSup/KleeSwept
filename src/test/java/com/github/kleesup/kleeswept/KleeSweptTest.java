@@ -1,7 +1,7 @@
 package com.github.kleesup.kleeswept;
 
 
-import com.github.kleesup.kleeswept.response.SimpleSweptResult;
+import com.github.kleesup.kleeswept.response.SweptResult;
 
 /**
  *
@@ -14,7 +14,7 @@ public class KleeSweptTest {
 
     public static void main(String[] args) {
 
-        SimpleSweptResult response = new SimpleSweptResult();
+        SweptResult response = new SweptResult();
 
     }
 

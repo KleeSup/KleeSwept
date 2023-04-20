@@ -3,7 +3,8 @@ package com.github.kleesup.kleeswept;
 import com.badlogic.gdx.math.Circle;
 import com.github.kleesup.kleeswept.impl.SweptMagnitude;
 import com.github.kleesup.kleeswept.response.SweptResult;
-import com.github.kleesup.kleeswept.response.SimpleSweptResult;
+
+import java.util.*;
 
 /**
  * A class that contains all useful methods to detect collisions between AABB using swept collision detection.
@@ -16,6 +17,13 @@ import com.github.kleesup.kleeswept.response.SimpleSweptResult;
  * @since 1.0.0
  */
 public class KleeSweptDetection {
+
+    private static final Comparator<SweptResult> comparator = new Comparator<SweptResult>() {
+        @Override
+        public int compare(SweptResult o1, SweptResult o2) {
+            return Float.compare(o2.time, o1.time); //sort for smallest time first
+        }
+    };
 
     /*
     Simple intersection checks
@@ -69,12 +77,12 @@ public class KleeSweptDetection {
      * @param tempMagWriteTo A temporary point object where the magnitude can be written into (Useful when less object creation is desired).
      * @return The result of the swept collision test.
      */
-    public static SimpleSweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, AABB aabb, SimpleSweptResult resultWriteTo, Magnitude tempMagWriteTo){
+    public static SweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, AABB aabb, SweptResult resultWriteTo, Magnitude tempMagWriteTo){
         Magnitude magnitude = tempMagWriteTo != null ? tempMagWriteTo : new SweptMagnitude();
         KleeHelper.calculateMagnitude(x,y,goalX,goalY,magnitude);
         return doesRayIntersectAABB(x,y,magnitude,aabb,resultWriteTo);
     }
-    public static SimpleSweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, AABB aabb){
+    public static SweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, AABB aabb){
         return doesRayIntersectAABB(x,y,goalX,goalY,aabb,null, null);
     }
 
@@ -87,10 +95,10 @@ public class KleeSweptDetection {
      * @param resultWriteTo A temp result object where the outcome can be written into (Useful when less object creation is desired).
      * @return The result of the swept collision test.
      */
-    public static SimpleSweptResult doesRayIntersectAABB(float x, float y, Magnitude magnitude, AABB aabb, SimpleSweptResult resultWriteTo){
+    public static SweptResult doesRayIntersectAABB(float x, float y, Magnitude magnitude, AABB aabb, SweptResult resultWriteTo){
         KleeHelper.paramRequireNonNull(magnitude, "Magnitude cannot be null!");
         KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
-        SimpleSweptResult response = resultWriteTo != null ? resultWriteTo : new SimpleSweptResult();
+        SweptResult response = resultWriteTo != null ? resultWriteTo : new SweptResult();
         response.reset();
         response.other = aabb;
 
@@ -138,7 +146,7 @@ public class KleeSweptDetection {
         }
         return response;
     }
-    public static SimpleSweptResult doesRayIntersectAABB(float x, float y, Magnitude magnitude, AABB aabb){
+    public static SweptResult doesRayIntersectAABB(float x, float y, Magnitude magnitude, AABB aabb){
         return doesRayIntersectAABB(x,y,magnitude,aabb,null);
     }
 
@@ -164,12 +172,12 @@ public class KleeSweptDetection {
      * @return The result of the swept test.
      */
     public static SweptResult checkAABBvsAABB(AABB aabb, AABB other, float goalX, float goalY, SweptResult resultWriteTo,
-                                              Magnitude tempMagWritTo, boolean fixHitPos){
+                                               Magnitude tempMagWritTo, boolean fixHitPos){
         KleeHelper.paramRequireNonNull(aabb, "First AABB cannot be null!");
         KleeHelper.paramRequireNonNull(other, "Second AABB cannot be null!");
         if(resultWriteTo == null)resultWriteTo = new SweptResult();
         AABB sum = KleeHelper.calculateSumAABB(aabb, other, resultWriteTo.sumAABB);
-        SweptResult response = (SweptResult) doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, sum, resultWriteTo, tempMagWritTo);
+        SweptResult response = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, sum, resultWriteTo, tempMagWritTo);
         response.aabb = aabb;
         response.other = other;
         response.sumAABB = sum;
@@ -177,7 +185,7 @@ public class KleeSweptDetection {
         response.sumY = response.y;
         if(fixHitPos){
             //does a second collision test with the original other AABB to fix the hit-x/y
-            SweptResult fixed = (SweptResult) doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, other, new SweptResult(), tempMagWritTo);
+            SweptResult fixed = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, other, new SweptResultA(), tempMagWritTo);
             response.x = fixed.x;
             response.y = fixed.y;
             response.isHitPosFixed = true;
@@ -206,7 +214,7 @@ public class KleeSweptDetection {
      * @return The result of the swept collision test.
      */
     public static SweptResult checkAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY, SweptResult resultWriteTo,
-                                              Magnitude tempMagWritTo, boolean fixHitPos){
+                                                           Magnitude tempMagWritTo, boolean fixHitPos){
         return checkAABBvsAABB(aabb, other, aabb.getCenterX() + velX, aabb.getCenterY() + velY, resultWriteTo, tempMagWritTo, fixHitPos);
     }
     public static SweptResult checkAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY, boolean fixHitPos){
@@ -216,63 +224,44 @@ public class KleeSweptDetection {
         return checkAABBvsAABBWithVelocity(aabb,other,velX,velY,null,null,true);
     }
 
-    /*
-    Simple Swept AABB collision detection
-    */
-
     /**
-     * Does a simple swept AABB test between two AABBs.
-     * Do NOT use this method for high velocity movements as this method does NOT fix the tunneling problem.
-     * If that is a problem, use {@link #checkAABBvsAABB(AABB, AABB, float, float)} instead.
+     * Does a swept collision test between an AABB and multiple other AABBs.
      * @param aabb The AABB to test for.
-     * @param other The AABB to test against.
+     * @param others The AABBs to test against.
      * @param goalX The new x-coordinate at which the <b>aabb</b> wants to be located at (with the center!).
      * @param goalY The new y-coordinate at which the <b>aabb</b> wants to be located at (with the center!).
-     * @param responseWriteTo A temp response object where the outcome can be written into (Useful when less object creation is desired).
-     * @param magWriteTo A temp magnitude object where the outcome can be written into (Useful when less object creation is desired).
-     * @return The result of the swept collision test.
+     * @param resultWriteTo A temp result object where the outcome can be written into (Useful when less object creation is desired).
+     * @param tempMagWriteTo A temp magnitude object where the outcome can be written into (Useful when less object creation is desired).
+     * @param fixHitPos Whether the {@link SweptResult#x} and {@link SweptResult#y} should be fixed to the actual hit position at the <b>other</b> AABB.
+     *                  If this is {@code false}, the hit position in the response will not represent the hit position at the <b>other</b> AABB but the hit with the
+     *                  created sum-AABB.
+     * @param removeNoHit Whether collision results should be removed from the output if there was no collision detected.
+     * @return A list of all collision results (sorted by hit-time, lowest first).
      */
-    public static SimpleSweptResult checkSimpleAABBvsAABB(AABB aabb, AABB other, float goalX, float goalY, SimpleSweptResult responseWriteTo, Magnitude magWriteTo){
+    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY,
+                                                        List<SweptResult> resultWriteTo, Magnitude tempMagWriteTo, boolean fixHitPos, boolean removeNoHit){
         KleeHelper.paramRequireNonNull(aabb, "First AABB cannot be null!");
-        KleeHelper.paramRequireNonNull(other, "Second AABB cannot be null!");
-        SimpleSweptResult response = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, other, responseWriteTo, magWriteTo);
-        response.aabb = aabb;
-        return response;
+        if(resultWriteTo != null)resultWriteTo.clear();
+        if(others == null || others.isEmpty())return resultWriteTo == null ? new ArrayList<SweptResult>() : resultWriteTo;
+        List<SweptResult> results = resultWriteTo == null ? new ArrayList<SweptResult>(others.size()) : resultWriteTo;
+        if(tempMagWriteTo == null)tempMagWriteTo = new SweptMagnitude();
+        for(AABB other : others){
+            if(other == null)continue;
+            SweptResult result = checkAABBvsAABB(aabb, other, goalX, goalY, new SweptResult(), tempMagWriteTo, fixHitPos);
+            if(removeNoHit && !result.isHit)continue;
+            results.add(result);
+        }
+        Collections.sort(results, comparator);
+        return results;
     }
-    public static SimpleSweptResult checkSimpleAABBvsAABB(AABB aabb, AABB other, float goalX, float goalY){
-        return checkSimpleAABBvsAABB(aabb,other,goalX,goalY,null,null);
+    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY, boolean fixHitPos, boolean removeNoHit){
+        return checkAABBvsMultiple(aabb, others, goalX, goalY, null, null, fixHitPos, removeNoHit);
     }
-
-    /**
-     * Does a swept collision test between two AABBs by taking in the velocity of the first <b>aabb</b>.
-     * For more information check the documentation to {@link #checkAABBvsAABB(AABB, AABB, float, float, SweptResult, Magnitude, boolean)}.
-     * @param aabb The AABB to test for.
-     * @param other The AABB to test against.
-     * @param velX The velocity-x of the first AABB.
-     * @param velY The velocity-y of the first AABB.
-     * @param responseWriteTo A temp response object where the outcome can be written into (Useful when less object creation is desired).
-     * @param magWriteTo A temp magnitude object where the outcome can be written into (Useful when less object creation is desired).
-     * @return The result of the swept collision test.
-     */
-    public static SimpleSweptResult checkSimpleAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY, SimpleSweptResult responseWriteTo, Magnitude magWriteTo){
-        KleeHelper.paramRequireNonNull(aabb, "First AABB cannot be null!");
-        KleeHelper.paramRequireNonNull(other, "Second AABB cannot be null!");
-        return checkSimpleAABBvsAABB(aabb, other, aabb.getCenterX() + velX, aabb.getCenterY() + velY, responseWriteTo, magWriteTo);
+    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY, boolean removeNoHit){
+        return checkAABBvsMultiple(aabb, others, goalX, goalY, null,null, true, removeNoHit);
     }
-    public static SimpleSweptResult checkSimpleAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY){
-        return checkSimpleAABBvsAABBWithVelocity(aabb, other, velX, velY, null, null);
+    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY){
+        return checkAABBvsMultiple(aabb, others, goalX, goalY, null, null, true, true);
     }
-
-    /**
-     * Does a quick collision test between two AABBs. However, this method expects that the first AABB has already been moved.
-     * @param aabb The first AABB (this could be the one moving into the other).
-     * @param other The other AABB (could be the one which the first one moves into).
-     * @return The result of the collision test.
-     */
-    public static SimpleSweptResult checkSimpleAABBvsAABB(AABB aabb, AABB other){
-        return checkSimpleAABBvsAABB(aabb,other,aabb.getCenterX(),aabb.getCenterY());
-    }
-
-
 
 }
