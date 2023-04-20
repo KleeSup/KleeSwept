@@ -44,6 +44,8 @@ public class RectangleAABB extends Rectangle implements AABB {
         return y + height;
     }
 
-
-
+    @Override
+    public Rectangle setSize(float width, float height) {
+        return super.setSize(width, height);
+    }
 }

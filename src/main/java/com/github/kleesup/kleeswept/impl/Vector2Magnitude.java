@@ -45,4 +45,8 @@ public class Vector2Magnitude extends Vector2 implements Magnitude {
         return this;
     }
 
+    @Override
+    public Vector2 set(float x, float y) {
+        return super.set(x, y);
+    }
 }
