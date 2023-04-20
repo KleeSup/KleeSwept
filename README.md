@@ -1,7 +1,7 @@
 # KleeSwept
 2D AABB collision detection written in Java
 
-##Features
+## Features
 - swept collision detection between two AABBs
 - swept collision detection between multiple AABBs with sorted outcome
 - high velocity collision detection
