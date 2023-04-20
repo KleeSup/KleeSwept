@@ -185,7 +185,7 @@ public class KleeSweptDetection {
         response.sumY = response.y;
         if(fixHitPos){
             //does a second collision test with the original other AABB to fix the hit-x/y
-            SweptResult fixed = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, other, new SweptResultA(), tempMagWritTo);
+            SweptResult fixed = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, other, new SweptResult(), tempMagWritTo);
             response.x = fixed.x;
             response.y = fixed.y;
             response.isHitPosFixed = true;
