@@ -1,6 +1,7 @@
 package com.github.kleesup.kleeswept;
 
-import com.badlogic.gdx.math.Vector2;
+import com.github.kleesup.kleeswept.impl.SimpleAABB;
+import com.github.kleesup.kleeswept.impl.SweptMagnitude;
 
 /**
  * <br>Created on 17.04.2023</br>
@@ -29,15 +30,38 @@ public final class KleeHelper {
      * @param y The y-coordinate of the start-position.
      * @param goalX The x-coordinate of the goal-position.
      * @param goalY The y-coordinate of the goal-position.
-     * @param vecWriteTo A temp response object where the outcome can be written into (Useful when less object creation is desired).
+     * @param magWriteTo A temporary point object where the magnitude can be written into (Useful when less object creation is desired).
      * @return The calculated magnitude between the two points.
      */
-    public static Vector2 calculateMagnitude(float x, float y, float goalX, float goalY, Vector2 vecWriteTo){
-        return (vecWriteTo != null ? vecWriteTo : new Vector2()).set(goalX,goalY).sub(x,y);
+    public static Magnitude calculateMagnitude(float x, float y, float goalX, float goalY, Magnitude magWriteTo){
+        Magnitude point = (magWriteTo != null ? magWriteTo : new SweptMagnitude()).set(goalX,goalY);
+        point.sub(x,y);
+        return point;
     }
-    public static Vector2 calculateMagnitude(float x, float y, float goalX, float goalY){
+    public static Magnitude calculateMagnitude(float x, float y, float goalX, float goalY){
         return calculateMagnitude(x,y,goalX,goalY,null);
     }
 
+    /**
+     * Calculates a summed AABB which represents an AABB centered at the center of the second AABB and the width and height of both combined.
+     * @param aabb The AABB from which the sizes are added to the second.
+     * @param other The second AABB which sets the position.
+     * @param sumWriteTo A temp AABB object where the outcome can be written into (Useful when less object creation is desired).
+     * @return The sum of both AABB sizes with the center located at the second AABBs center.
+     */
+    public static AABB calculateSumAABB(AABB aabb, AABB other, AABB sumWriteTo){
+        paramRequireNonNull(aabb, "AABB cannot be null!");
+        paramRequireNonNull(other, "Second AABB cannot be null!");
+        if(sumWriteTo == null)sumWriteTo = new SimpleAABB();
+        //calculating the sum of both AABBs by adding their width and height together.
+        float width = aabb.getWidth() + other.getWidth();
+        float height = aabb.getHeight() + other.getHeight();
+        sumWriteTo.setSize(width, height);
+        sumWriteTo.setCenter(other.getCenterX(), other.getCenterY());
+        return sumWriteTo;
+    }
+    public static AABB calculateSumAABB(AABB aabb, AABB other){
+        return calculateSumAABB(aabb, other, null);
+    }
 
 }

@@ -1,6 +1,8 @@
 package com.github.kleesup.kleeswept;
 
 
+import com.github.kleesup.kleeswept.response.SimpleSweptResult;
+
 /**
  *
  * <br>Created on 17.04.2023</br>
@@ -12,7 +14,7 @@ public class KleeSweptTest {
 
     public static void main(String[] args) {
 
-
+        SimpleSweptResult response = new SimpleSweptResult();
 
     }
 

@@ -1,6 +1,8 @@
 package com.github.kleesup.kleeswept.response;
 
-import com.github.kleesup.kleeswept.SweptAABB;
+import com.github.kleesup.kleeswept.AABB;
+import com.github.kleesup.kleeswept.KleeHelper;
+import com.github.kleesup.kleeswept.Magnitude;
 
 /**
  * A simple container for a collision swept response between two AABBs.
@@ -10,12 +12,12 @@ import com.github.kleesup.kleeswept.SweptAABB;
  * @version 1.0
  * @since 1.0.0
  */
-public class SweptResponse {
+public class SimpleSweptResult {
 
     /** The AABB that was used for the collision. */
-    public SweptAABB aabb;
+    public AABB aabb;
     /** The AABB which may have been collided upon. */
-    public SweptAABB other;
+    public AABB other;
     /** Whether there was a collision. */
     public boolean isHit;
     /** The calculated hit-time. */
@@ -36,5 +38,4 @@ public class SweptResponse {
         normalX = 0;
         normalY = 0;
     }
-
 }
