@@ -8,6 +8,8 @@
 - fixed tunneling problem
 - detailed output with hit-position, normal, hit-time, etc.
 
+![Alt Text](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYmZiNjdmYThmNDZmYzM0NzE2NDUyZmNlY2JlMzdhNTg0YzU2ZDFhMCZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/XrHcgxio3xjnXBAcb5/giphy.gif)
+
 ## How to use
 
 ```java
