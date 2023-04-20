@@ -3,7 +3,7 @@ package com.github.kleesup.kleeswept.response;
 import com.github.kleesup.kleeswept.AABB;
 
 /**
- * A simple container for a collision swept response between two AABBs.
+ * A container for a collision swept result between two AABBs.
  * Note that a returned response instance doesn't necessarily mean that there was a collision as {@link #isHit} can still be {@code false}.
  * <br>Created on 17.04.2023</br>
  * @author KleeSup

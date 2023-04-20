@@ -4,7 +4,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.github.kleesup.kleeswept.AABB;
 
 /**
- * A standoff implementation of {@link AABB} which does not require {@link Rectangle} from LibGDX and therefore doesn't require LibGDX.
+ * An implementation of {@link AABB} which does not require {@link Rectangle} from LibGDX and therefore doesn't require LibGDX.
  * <br>Created on 17.04.2023</br>
  * @author KleeSup
  * @version 1.0.0

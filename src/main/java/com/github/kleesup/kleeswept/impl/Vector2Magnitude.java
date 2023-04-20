@@ -4,8 +4,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.github.kleesup.kleeswept.Magnitude;
 
 /**
+ * An implementation of {@link Magnitude} which uses the {@link Vector2} class from LibGDX as base to append on functionality.
  * <br>Created on 17.04.2023</br>
- *
  * @author KleeSup
  * @version 1.0
  * @since 1.0.0
