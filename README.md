@@ -1,10 +1,10 @@
 # KleeSwept
 2D AABB collision detection written in Java
 
-##How to use
+## How to use
 
 
-##How to implement
+## How to implement
 
 
 
