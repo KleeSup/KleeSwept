@@ -1,13 +1,14 @@
 package com.github.kleesup.kleeswept;
 
-import com.github.kleesup.kleeswept.impl.SimpleAABB;
-import com.github.kleesup.kleeswept.impl.SweptMagnitude;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+
 
 /**
  * <br>Created on 17.04.2023</br>
  *
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.0
  */
 public final class KleeHelper {
@@ -33,12 +34,12 @@ public final class KleeHelper {
      * @param magWriteTo A temporary point object where the magnitude can be written into (Useful when less object creation is desired).
      * @return The calculated magnitude between the two points.
      */
-    public static Magnitude calculateMagnitude(float x, float y, float goalX, float goalY, Magnitude magWriteTo){
-        Magnitude point = (magWriteTo != null ? magWriteTo : new SweptMagnitude()).set(goalX,goalY);
+    public static Vector2 calculateMagnitude(float x, float y, float goalX, float goalY, Vector2 magWriteTo){
+        Vector2 point = (magWriteTo != null ? magWriteTo : new Vector2()).set(goalX,goalY);
         point.sub(x,y);
         return point;
     }
-    public static Magnitude calculateMagnitude(float x, float y, float goalX, float goalY){
+    public static Vector2 calculateMagnitude(float x, float y, float goalX, float goalY){
         return calculateMagnitude(x,y,goalX,goalY,null);
     }
 
@@ -49,18 +50,18 @@ public final class KleeHelper {
      * @param sumWriteTo A temp AABB object where the outcome can be written into (Useful when less object creation is desired).
      * @return The sum of both AABB sizes with the center located at the second AABBs center.
      */
-    public static AABB calculateSumAABB(AABB aabb, AABB other, AABB sumWriteTo){
+    public static Rectangle calculateSumAABB(Rectangle aabb, Rectangle other, Rectangle sumWriteTo){
         paramRequireNonNull(aabb, "AABB cannot be null!");
         paramRequireNonNull(other, "Second AABB cannot be null!");
-        if(sumWriteTo == null)sumWriteTo = new SimpleAABB();
+        if(sumWriteTo == null)sumWriteTo = new Rectangle();
         //calculating the sum of both AABBs by adding their width and height together.
         float width = aabb.getWidth() + other.getWidth();
         float height = aabb.getHeight() + other.getHeight();
         sumWriteTo.setSize(width, height);
-        sumWriteTo.setCenter(other.getCenterX(), other.getCenterY());
+        sumWriteTo.setCenter(KleeSweptDetection.getCenterX(other), KleeSweptDetection.getCenterY(other));
         return sumWriteTo;
     }
-    public static AABB calculateSumAABB(AABB aabb, AABB other){
+    public static Rectangle calculateSumAABB(Rectangle aabb, Rectangle other){
         return calculateSumAABB(aabb, other, null);
     }
 

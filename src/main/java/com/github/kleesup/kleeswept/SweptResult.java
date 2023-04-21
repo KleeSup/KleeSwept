@@ -1,21 +1,21 @@
-package com.github.kleesup.kleeswept.response;
+package com.github.kleesup.kleeswept;
 
-import com.github.kleesup.kleeswept.AABB;
+import com.badlogic.gdx.math.Rectangle;
 
 /**
  * A container for a collision swept result between two AABBs.
  * Note that a returned response instance doesn't necessarily mean that there was a collision as {@link #isHit} can still be {@code false}.
  * <br>Created on 17.04.2023</br>
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.0
  */
 public class SweptResult {
 
     /** The AABB that was used for the collision. */
-    public AABB aabb;
+    public Rectangle aabb;
     /** The AABB which may have been collided upon. */
-    public AABB other;
+    public Rectangle other;
     /** Whether there was a collision. */
     public boolean isHit;
     /** The calculated hit-time. */
@@ -31,7 +31,7 @@ public class SweptResult {
 
 
     /** The stored sum of both colliders, saved for further collision response. */
-    public AABB sumAABB;
+    public Rectangle sumAABB;
 
     /** Represents the hit position with the {@link #sumAABB}. */
     public float sumX, sumY;

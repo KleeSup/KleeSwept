@@ -1,19 +1,18 @@
 package com.github.kleesup.kleeswept;
 
-import com.badlogic.gdx.math.Circle;
-import com.github.kleesup.kleeswept.impl.SweptMagnitude;
-import com.github.kleesup.kleeswept.response.SweptResult;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 
 import java.util.*;
 
 /**
  * A class that contains all useful methods to detect collisions between AABB using swept collision detection.
  * NOTE: The math of all swept collision methods uses the CENTER of the AABBs.
- * Therefore, if you use methods such as {@link #checkAABBvsAABB(AABB, AABB, float, float)} be aware that <b>goalX</b> and <b>goalY</b> ALWAYS
+ * Therefore, if you use methods such as {@link #checkDynamicVsStaticAABB(Rectangle, Rectangle, float, float)} be aware that <b>goalX</b> and <b>goalY</b> ALWAYS
  * need to be calculated from the CENTER of the AABBs!
  * <br>Created on 17.04.2023</br>
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.0
  */
 public class KleeSweptDetection {
@@ -26,41 +25,23 @@ public class KleeSweptDetection {
     };
 
     /*
-    Simple intersection checks
+    Specified getters for AABBs.
     */
 
-    public static boolean doesPointIntersectAABB(AABB aabb, float pointX, float pointY){
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
-        return pointX >= aabb.getX() &&
-                pointX <= aabb.getMaxX() &&
-                pointY >= aabb.getY() &&
-                pointY <= aabb.getMaxY();
+    public static float getCenterX(Rectangle aabb){
+        return aabb.getX() + (aabb.getWidth()/2f);
+    }
+    public static float getCenterY(Rectangle aabb){
+        return aabb.getY() + (aabb.getHeight()/2f);
     }
 
-    public static boolean doesAABBIntersectAABB(AABB aabb, AABB other){
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
-        KleeHelper.paramRequireNonNull(other, "Second AABB cannot be null!");
-        return aabb.getX() < other.getX() + other.getWidth() && aabb.getX() + aabb.getWidth() > other.getX() &&
-                aabb.getY() < other.getY() + other.getHeight() && aabb.getY() + aabb.getHeight() > other.getY();
+    public static float getMaxX(Rectangle aabb){
+        return aabb.getX() + aabb.getWidth();
+    }
+    public static float getMaxY(Rectangle aabb){
+        return aabb.getY() + aabb.getHeight();
     }
 
-    public static boolean doesAABBContainAABB(AABB aabb, AABB other){
-        return ((other.getX() > aabb.getX() && other.getX() < aabb.getX() + aabb.getWidth()) &&
-                (other.getMaxX() > aabb.getX() && other.getMaxX() < aabb.getX() + aabb.getWidth()))
-                && ((other.getY() > aabb.getY() && other.getY() < aabb.getX() + aabb.getHeight()) &&
-                (other.getMaxY() > aabb.getX() && other.getMaxY() < aabb.getX() + aabb.getHeight()));
-    }
-
-    public static boolean doesAABBContainCircle(AABB aabb, float circleX, float circleY, float radius){
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
-        return (circleX - radius >= aabb.getX()) && (circleX + radius <= aabb.getX() + aabb.getWidth()) && (circleY - radius >= aabb.getY())
-                && (circleY + radius <= aabb.getY() + aabb.getHeight());
-    }
-
-    public static boolean doesAABBContainCircle(AABB aabb, Circle circle){
-        KleeHelper.paramRequireNonNull(circle, "Circle cannot be null!");
-        return doesAABBContainCircle(aabb, circle.x, circle.y, circle.radius);
-    }
 
     /*
     Ray AABB intersection
@@ -77,12 +58,12 @@ public class KleeSweptDetection {
      * @param tempMagWriteTo A temporary point object where the magnitude can be written into (Useful when less object creation is desired).
      * @return The result of the swept collision test.
      */
-    public static SweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, AABB aabb, SweptResult resultWriteTo, Magnitude tempMagWriteTo){
-        Magnitude magnitude = tempMagWriteTo != null ? tempMagWriteTo : new SweptMagnitude();
+    public static SweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, SweptResult resultWriteTo, Vector2 tempMagWriteTo){
+        Vector2 magnitude = tempMagWriteTo != null ? tempMagWriteTo : new Vector2();
         KleeHelper.calculateMagnitude(x,y,goalX,goalY,magnitude);
         return doesRayIntersectAABB(x,y,magnitude,aabb,resultWriteTo);
     }
-    public static SweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, AABB aabb){
+    public static SweptResult doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb){
         return doesRayIntersectAABB(x,y,goalX,goalY,aabb,null, null);
     }
 
@@ -95,7 +76,7 @@ public class KleeSweptDetection {
      * @param resultWriteTo A temp result object where the outcome can be written into (Useful when less object creation is desired).
      * @return The result of the swept collision test.
      */
-    public static SweptResult doesRayIntersectAABB(float x, float y, Magnitude magnitude, AABB aabb, SweptResult resultWriteTo){
+    public static SweptResult doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, SweptResult resultWriteTo){
         KleeHelper.paramRequireNonNull(magnitude, "Magnitude cannot be null!");
         KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
         SweptResult response = resultWriteTo != null ? resultWriteTo : new SweptResult();
@@ -106,34 +87,34 @@ public class KleeSweptDetection {
         float firstExit = Float.POSITIVE_INFINITY;
 
         //magnitude should not be zero to avoid dividing by zero
-        if(magnitude.getX() != 0){
-            float t1 = (aabb.getX() - x) / magnitude.getX();
-            float t2 = (aabb.getMaxX() - x) / magnitude.getX();
+        if(magnitude.x != 0){
+            float t1 = (aabb.getX() - x) / magnitude.x;
+            float t2 = (getMaxX(aabb) - x) / magnitude.x;
             lastEntry = Math.max(lastEntry, Math.min(t1, t2));
             firstExit = Math.min(firstExit, Math.max(t1, t2));
-        }else if (x <= aabb.getX() || x >= aabb.getMaxX()){
+        }else if (x <= aabb.getX() || x >= getMaxX(aabb)){
             return response;
         }
-        if(magnitude.getY() != 0){
-            float t1 = (aabb.getY() - y) / magnitude.getY();
-            float t2 = (aabb.getMaxY() - y) / magnitude.getY();
+        if(magnitude.y != 0){
+            float t1 = (aabb.getY() - y) / magnitude.y;
+            float t2 = (getMaxY(aabb) - y) / magnitude.y;
             lastEntry = Math.max(lastEntry, Math.min(t1, t2));
             firstExit = Math.min(firstExit, Math.max(t1, t2));
-        }else if (y <= aabb.getY() || y >= aabb.getMaxY()){
+        }else if (y <= aabb.getY() || y >= getMaxY(aabb)){
             return response;
         }
 
         //condition for a collision
         if(firstExit > lastEntry && firstExit > 0 && lastEntry < 1){
-            response.x = x + magnitude.getX() * lastEntry;
-            response.y = y + magnitude.getY() * lastEntry;
+            response.x = x + magnitude.x * lastEntry;
+            response.y = y + magnitude.y * lastEntry;
 
             response.isHit = true;
             response.time = lastEntry;
 
             //calculating hit normal
-            float dx = response.x - aabb.getCenterX();
-            float dy = response.y - aabb.getCenterY();
+            float dx = response.x - getCenterX(aabb);
+            float dy = response.y - getCenterY(aabb);
             float px = (aabb.getWidth()/2) - Math.abs(dx);
             float py = (aabb.getHeight()/2) - Math.abs(dy);
 
@@ -146,7 +127,7 @@ public class KleeSweptDetection {
         }
         return response;
     }
-    public static SweptResult doesRayIntersectAABB(float x, float y, Magnitude magnitude, AABB aabb){
+    public static SweptResult doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb){
         return doesRayIntersectAABB(x,y,magnitude,aabb,null);
     }
 
@@ -171,13 +152,13 @@ public class KleeSweptDetection {
      *                  created sum-AABB.
      * @return The result of the swept test.
      */
-    public static SweptResult checkAABBvsAABB(AABB aabb, AABB other, float goalX, float goalY, SweptResult resultWriteTo,
-                                               Magnitude tempMagWritTo, boolean fixHitPos){
+    public static SweptResult checkDynamicVsStaticAABB(Rectangle aabb, Rectangle other, float goalX, float goalY, SweptResult resultWriteTo,
+                                               Vector2 tempMagWritTo, boolean fixHitPos){
         KleeHelper.paramRequireNonNull(aabb, "First AABB cannot be null!");
         KleeHelper.paramRequireNonNull(other, "Second AABB cannot be null!");
         if(resultWriteTo == null)resultWriteTo = new SweptResult();
-        AABB sum = KleeHelper.calculateSumAABB(aabb, other, resultWriteTo.sumAABB);
-        SweptResult response = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, sum, resultWriteTo, tempMagWritTo);
+        Rectangle sum = KleeHelper.calculateSumAABB(aabb, other, resultWriteTo.sumAABB);
+        SweptResult response = doesRayIntersectAABB(getCenterX(aabb), getCenterY(aabb), goalX, goalY, sum, resultWriteTo, tempMagWritTo);
         response.aabb = aabb;
         response.other = other;
         response.sumAABB = sum;
@@ -185,27 +166,27 @@ public class KleeSweptDetection {
         response.sumY = response.y;
         if(fixHitPos){
             //does a second collision test with the original other AABB to fix the hit-x/y
-            SweptResult fixed = doesRayIntersectAABB(aabb.getCenterX(), aabb.getCenterY(), goalX, goalY, other, new SweptResult(), tempMagWritTo);
+            SweptResult fixed = doesRayIntersectAABB(getCenterX(aabb), getCenterY(aabb), goalX, goalY, other, new SweptResult(), tempMagWritTo);
             response.x = fixed.x;
             response.y = fixed.y;
             response.isHitPosFixed = true;
         }
         return response;
     }
-    public static SweptResult checkAABBvsAABB(AABB aabb, AABB other, float goalX, float goalY, boolean fixHitPos){
-        return checkAABBvsAABB(aabb, other, goalX, goalY, null, null, fixHitPos);
+    public static SweptResult checkDynamicVsStaticAABB(Rectangle aabb, Rectangle other, float goalX, float goalY, boolean fixHitPos){
+        return checkDynamicVsStaticAABB(aabb, other, goalX, goalY, null, null, fixHitPos);
     }
-    public static SweptResult checkAABBvsAABB(AABB aabb, AABB other, float goalX, float goalY){
-        return checkAABBvsAABB(aabb, other, goalX, goalY, null, null, true);
+    public static SweptResult checkDynamicVsStaticAABB(Rectangle aabb, Rectangle other, float goalX, float goalY){
+        return checkDynamicVsStaticAABB(aabb, other, goalX, goalY, null, null, true);
     }
 
     /**
      * Does a swept collision test between two AABBs by taking in the velocity of the first <b>aabb</b>.
-     * For more information check the documentation to {@link #checkAABBvsAABB(AABB, AABB, float, float, SweptResult, Magnitude, boolean)}.
+     * For more information check the documentation to {@link #checkDynamicVsStaticAABB(Rectangle, Rectangle, float, float, SweptResult, Vector2, boolean)}.
      * @param aabb The AABB to test for.
      * @param other The AABB to test against.
-     * @param velX The velocity-x of the first AABB.
-     * @param velY The velocity-y of the first AABB.
+     * @param displacementX The displacement-x of the first AABB.
+     * @param displacementY The displacement-y of the first AABB.
      * @param resultWriteTo A temp result object where the outcome can be written into (Useful when less object creation is desired).
      * @param tempMagWritTo A temp magnitude object where the outcome can be written into (Useful when less object creation is desired).
      * @param fixHitPos Whether the {@link SweptResult#x} and {@link SweptResult#y} should be fixed to the actual hit position at the <b>other</b> AABB.
@@ -213,15 +194,15 @@ public class KleeSweptDetection {
      *                  created sum-AABB.
      * @return The result of the swept collision test.
      */
-    public static SweptResult checkAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY, SweptResult resultWriteTo,
-                                                           Magnitude tempMagWritTo, boolean fixHitPos){
-        return checkAABBvsAABB(aabb, other, aabb.getCenterX() + velX, aabb.getCenterY() + velY, resultWriteTo, tempMagWritTo, fixHitPos);
+    public static SweptResult checkDynamicVsStaticAABBWithDisplacement(Rectangle aabb, Rectangle other, float displacementX, float displacementY, SweptResult resultWriteTo,
+                                                           Vector2 tempMagWritTo, boolean fixHitPos){
+        return checkDynamicVsStaticAABB(aabb, other, getCenterX(aabb) + displacementX, getCenterY(aabb) + displacementY, resultWriteTo, tempMagWritTo, fixHitPos);
     }
-    public static SweptResult checkAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY, boolean fixHitPos){
-        return checkAABBvsAABBWithVelocity(aabb,other,velX,velY,null,null,fixHitPos);
+    public static SweptResult checkDynamicVsStaticAABBWithDisplacement(Rectangle aabb, Rectangle other, float displacementX, float displacementY, boolean fixHitPos){
+        return checkDynamicVsStaticAABBWithDisplacement(aabb,other,displacementX,displacementY,null,null,fixHitPos);
     }
-    public static SweptResult checkAABBvsAABBWithVelocity(AABB aabb, AABB other, float velX, float velY){
-        return checkAABBvsAABBWithVelocity(aabb,other,velX,velY,null,null,true);
+    public static SweptResult checkDynamicVsStaticAABBWithDisplacement(Rectangle aabb, Rectangle other, float displacementX, float displacementY){
+        return checkDynamicVsStaticAABBWithDisplacement(aabb,other,displacementX,displacementY,null,null,true);
     }
 
     /**
@@ -238,30 +219,30 @@ public class KleeSweptDetection {
      * @param removeNoHit Whether collision results should be removed from the output if there was no collision detected.
      * @return A list of all collision results (sorted by hit-time, lowest first).
      */
-    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY,
-                                                        List<SweptResult> resultWriteTo, Magnitude tempMagWriteTo, boolean fixHitPos, boolean removeNoHit){
+    public static List<SweptResult> checkDynamicVsMultipleStaticAABBs(Rectangle aabb, Collection<Rectangle> others, float goalX, float goalY,
+                                                        List<SweptResult> resultWriteTo, Vector2 tempMagWriteTo, boolean fixHitPos, boolean removeNoHit){
         KleeHelper.paramRequireNonNull(aabb, "First AABB cannot be null!");
         if(resultWriteTo != null)resultWriteTo.clear();
         if(others == null || others.isEmpty())return resultWriteTo == null ? new ArrayList<SweptResult>() : resultWriteTo;
         List<SweptResult> results = resultWriteTo == null ? new ArrayList<SweptResult>(others.size()) : resultWriteTo;
-        if(tempMagWriteTo == null)tempMagWriteTo = new SweptMagnitude();
-        for(AABB other : others){
+        if(tempMagWriteTo == null)tempMagWriteTo = new Vector2();
+        for(Rectangle other : others){
             if(other == null)continue;
-            SweptResult result = checkAABBvsAABB(aabb, other, goalX, goalY, new SweptResult(), tempMagWriteTo, fixHitPos);
+            SweptResult result = checkDynamicVsStaticAABB(aabb, other, goalX, goalY, new SweptResult(), tempMagWriteTo, fixHitPos);
             if(removeNoHit && !result.isHit)continue;
             results.add(result);
         }
         Collections.sort(results, comparator);
         return results;
     }
-    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY, boolean fixHitPos, boolean removeNoHit){
-        return checkAABBvsMultiple(aabb, others, goalX, goalY, null, null, fixHitPos, removeNoHit);
+    public static List<SweptResult> checkDynamicVsMultipleStaticAABBs(Rectangle aabb, Collection<Rectangle> others, float goalX, float goalY, boolean fixHitPos, boolean removeNoHit){
+        return checkDynamicVsMultipleStaticAABBs(aabb, others, goalX, goalY, null, null, fixHitPos, removeNoHit);
     }
-    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY, boolean removeNoHit){
-        return checkAABBvsMultiple(aabb, others, goalX, goalY, null,null, true, removeNoHit);
+    public static List<SweptResult> checkDynamicVsMultipleStaticAABBs(Rectangle aabb, Collection<Rectangle> others, float goalX, float goalY, boolean removeNoHit){
+        return checkDynamicVsMultipleStaticAABBs(aabb, others, goalX, goalY, null,null, true, removeNoHit);
     }
-    public static List<SweptResult> checkAABBvsMultiple(AABB aabb, Collection<AABB> others, float goalX, float goalY){
-        return checkAABBvsMultiple(aabb, others, goalX, goalY, null, null, true, true);
+    public static List<SweptResult> checkDynamicVsMultipleStaticAABBs(Rectangle aabb, Collection<Rectangle> others, float goalX, float goalY){
+        return checkDynamicVsMultipleStaticAABBs(aabb, others, goalX, goalY, null, null, true, true);
     }
 
 }
