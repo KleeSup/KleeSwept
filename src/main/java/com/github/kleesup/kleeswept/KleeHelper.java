@@ -5,8 +5,8 @@ import com.badlogic.gdx.math.Vector2;
 
 
 /**
+ * Simple utility class.
  * <br>Created on 17.04.2023</br>
- *
  * @author KleeSup
  * @version 1.1
  * @since 1.0.0
