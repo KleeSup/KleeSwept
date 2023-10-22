@@ -1,6 +1,6 @@
 package com.github.kleesup.kleeswept.world;
 
-import com.github.kleesup.kleeswept.world.body.ISweptAABB;
+import com.github.kleesup.kleeswept.world.body.ISweptBody;
 
 import java.util.*;
 
@@ -14,7 +14,7 @@ import java.util.*;
 public class CollisionResponse {
 
     /** The AABB that was tested **/
-    public ISweptAABB aabb;
+    public ISweptBody body;
     /** The next best goal position-x (original x + {@link #updatedDisplacementX}) **/
     public float bestGoalX;
     /** The next best goal position-y (original y + {@link #updatedDisplacementY}) **/
@@ -30,7 +30,7 @@ public class CollisionResponse {
      */
     public void clear(){
         collisions.clear();
-        aabb = null;
+        body = null;
     }
 
     public List<Collision> getCollisions() {
@@ -42,7 +42,7 @@ public class CollisionResponse {
      */
     public static class Collision{
         /** The targeted AABB which was tested against **/
-        public ISweptAABB target;
+        public ISweptBody target;
         /** Whether that AABB was hit in the test**/
         public boolean isHit;
         /**
@@ -65,7 +65,7 @@ public class CollisionResponse {
          */
         public float hitTime;
 
-        public Collision(ISweptAABB target, boolean isHit, float normalX, float normalY, float hitTime) {
+        public Collision(ISweptBody target, boolean isHit, float normalX, float normalY, float hitTime) {
             this.target = target;
             this.isHit = isHit;
             this.normalX = normalX;

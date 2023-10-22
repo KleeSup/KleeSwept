@@ -4,7 +4,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.github.kleesup.kleeswept.world.CollisionResponse;
 import com.github.kleesup.kleeswept.world.SimpleCollisionWorld;
-import com.github.kleesup.kleeswept.world.body.SweptAABB;
+import com.github.kleesup.kleeswept.world.body.SweptBody;
 
 /**
  * <br>Created on 22.10.2023</br>
@@ -19,11 +19,11 @@ public class Setup {
         int chunkSize = 32;
 
         //create a new world instance with a fixed chunk size
-        SimpleCollisionWorld<SweptAABB> world = new SimpleCollisionWorld<>(chunkSize);
+        SimpleCollisionWorld<SweptBody> world = new SimpleCollisionWorld<>(chunkSize);
 
         //initialize world objects
-        SweptAABB player = new SweptAABB();
-        SweptAABB obstacle = new SweptAABB();
+        SweptBody player = new SweptBody();
+        SweptBody obstacle = new SweptBody();
 
         //add them to the world with their bounding box
         world.addBody(player, new Rectangle(0,0,10,10));

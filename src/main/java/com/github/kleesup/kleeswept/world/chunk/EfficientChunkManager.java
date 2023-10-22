@@ -1,7 +1,7 @@
 package com.github.kleesup.kleeswept.world.chunk;
 
 import com.github.kleesup.kleeswept.KleeHelper;
-import com.github.kleesup.kleeswept.world.body.ISweptAABB;
+import com.github.kleesup.kleeswept.world.body.ISweptBody;
 
 import java.util.*;
 import java.util.function.Function;
@@ -16,28 +16,28 @@ import java.util.function.Function;
  * @version 1.0
  * @since 1.0.1
  */
-public class EfficientChunkManager<AABB extends ISweptAABB> implements IChunkManager<AABB> {
+public class EfficientChunkManager<Body extends ISweptBody> implements IChunkManager<Body> {
 
-    private final Function<Long, Set<AABB>> builderFunc = pair -> new HashSet<>();
+    private final Function<Long, Set<Body>> builderFunc = pair -> new HashSet<>();
 
-    private final Map<Long, Set<AABB>> chunks = new HashMap<>();
+    private final Map<Long, Set<Body>> chunks = new HashMap<>();
 
     @Override
-    public Set<AABB> getBodies(int chunkX, int chunkY) {
+    public Set<Body> getBodies(int chunkX, int chunkY) {
         long pair = KleeHelper.pairLong(chunkX, chunkY);
         return chunks.getOrDefault(pair, Collections.EMPTY_SET);
     }
 
     @Override
-    public void addBody(int chunkX, int chunkY, AABB aabb) {
+    public void addBody(int chunkX, int chunkY, Body aabb) {
         KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
         long pair = KleeHelper.pairLong(chunkX,chunkY);
-        Set<AABB> bodies = chunks.computeIfAbsent(pair, builderFunc);
+        Set<Body> bodies = chunks.computeIfAbsent(pair, builderFunc);
         bodies.add(aabb);
     }
 
     @Override
-    public void removeBody(int chunkX, int chunkY, AABB aabb) {
+    public void removeBody(int chunkX, int chunkY, Body aabb) {
         getBodies(chunkX,chunkY).remove(aabb);
     }
 }

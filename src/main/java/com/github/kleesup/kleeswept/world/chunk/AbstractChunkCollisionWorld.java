@@ -3,7 +3,7 @@ package com.github.kleesup.kleeswept.world.chunk;
 import com.badlogic.gdx.math.Rectangle;
 import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.world.CollisionWorld;
-import com.github.kleesup.kleeswept.world.body.ISweptAABB;
+import com.github.kleesup.kleeswept.world.body.ISweptBody;
 
 import java.util.function.BiConsumer;
 
@@ -14,32 +14,32 @@ import java.util.function.BiConsumer;
  * @version 1.0
  * @since 1.0.1
  */
-public abstract class AbstractChunkCollisionWorld<AABB extends ISweptAABB> implements CollisionWorld<AABB> {
+public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> implements CollisionWorld<Body> {
 
-    protected final IChunkManager<AABB> chunkManager;
+    protected final IChunkManager<Body> chunkManager;
 
     protected final int chunkSize;
-    protected AbstractChunkCollisionWorld(int chunkSize, IChunkManager<AABB> chunkManager){
+    protected AbstractChunkCollisionWorld(int chunkSize, IChunkManager<Body> chunkManager){
         this.chunkSize = chunkSize;
         this.chunkManager = chunkManager;
     }
 
     /**
      * Adds an AABB to all chunks containing its bounding box.
-     * @param aabb The AABB to add.
+     * @param body The AABB to add.
      * @param rectangle The bounding box of the AABB.
      */
-    protected void addToContainedChunks(AABB aabb, Rectangle rectangle){
-        forContainingChunk(rectangle, (chunkX, chunkY) -> chunkManager.addBody(chunkX, chunkY, aabb));
+    protected void addToContainedChunks(Body body, Rectangle rectangle){
+        forContainingChunk(rectangle, (chunkX, chunkY) -> chunkManager.addBody(chunkX, chunkY, body));
     }
 
     /**
      * Removes an AABB from all chunks containing its bounding box.
-     * @param aabb The AABB to remove.
+     * @param body The AABB to remove.
      * @param rectangle The bounding box of the AABB.
      */
-    protected void removeFromContainedChunks(AABB aabb, Rectangle rectangle){
-        forContainingChunk(rectangle, (chunkX, chunkY) -> chunkManager.removeBody(chunkX, chunkY, aabb));
+    protected void removeFromContainedChunks(Body body, Rectangle rectangle){
+        forContainingChunk(rectangle, (chunkX, chunkY) -> chunkManager.removeBody(chunkX, chunkY, body));
     }
 
     /**

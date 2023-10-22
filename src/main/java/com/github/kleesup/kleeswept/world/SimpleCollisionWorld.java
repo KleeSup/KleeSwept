@@ -5,7 +5,7 @@ import com.badlogic.gdx.math.Vector2;
 import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.KleeSweptDetection;
 import com.github.kleesup.kleeswept.util.Single;
-import com.github.kleesup.kleeswept.world.body.ISweptAABB;
+import com.github.kleesup.kleeswept.world.body.ISweptBody;
 import com.github.kleesup.kleeswept.world.chunk.AbstractChunkCollisionWorld;
 import com.github.kleesup.kleeswept.world.chunk.EfficientChunkManager;
 
@@ -20,86 +20,86 @@ import java.util.*;
  * @version 1.0
  * @since 1.0.1
  */
-public class SimpleCollisionWorld<AABB extends ISweptAABB> extends AbstractChunkCollisionWorld<AABB> {
+public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
 
-    private final Map<AABB, Rectangle> boundingBoxes = new HashMap<>();
+    private final Map<Body, Rectangle> boundingBoxes = new IdentityHashMap<>();
 
     public SimpleCollisionWorld(int chunkSize) {
         super(chunkSize, new EfficientChunkManager<>());
     }
 
     @Override
-    public void addBody(AABB aabb, Rectangle boundingBox) {
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
+    public void addBody(Body body, Rectangle boundingBox) {
+        KleeHelper.paramRequireNonNull(body, "AABB cannot be null!");
         KleeHelper.paramRequireNonNull(boundingBox, "Bounding box cannot be null!");
-        if(boundingBoxes.containsKey(aabb))return;
-        boundingBoxes.put(aabb, boundingBox);
-        addToContainedChunks(aabb, boundingBox);
+        if(boundingBoxes.containsKey(body))return;
+        boundingBoxes.put(body, boundingBox);
+        addToContainedChunks(body, boundingBox);
     }
 
     @Override
-    public Rectangle removeBody(AABB aabb) {
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
-        if(!contains(aabb))return null;
-        Rectangle boundingBox = getOriginalBoundingBox(aabb);
-        removeFromContainedChunks(aabb, boundingBox);
+    public Rectangle removeBody(Body body) {
+        KleeHelper.paramRequireNonNull(body, "AABB cannot be null!");
+        if(!contains(body))return null;
+        Rectangle boundingBox = getOriginalBoundingBox(body);
+        removeFromContainedChunks(body, boundingBox);
         return boundingBox;
     }
 
     @Override
-    public boolean contains(AABB aabb) {
-        return boundingBoxes.containsKey(aabb);
+    public boolean contains(Body body) {
+        return boundingBoxes.containsKey(body);
     }
 
     /**
      * Retrieves the bounding box of an AABB body.
      * Note: This is a copy of the internal original so any changes applied to it won't be applied to the world.
-     * If manipulation is wanted, use {@link #update(ISweptAABB, Vector2, float, float, CollisionResponse)} or {@link #forceUpdate(ISweptAABB, float, float, float, float)}.
-     * @param aabb The AABB to retrieve the body for.
+     * If manipulation is wanted, use {@link #update(ISweptBody, Vector2, float, float, CollisionResponse)} or {@link #forceUpdate(ISweptBody, float, float, float, float)}.
+     * @param body The AABB to retrieve the body for.
      * @return The rectangle bounding box (copy) of the AABB.
      */
     @Override
-    public Rectangle getBoundingBox(AABB aabb) {
-        return getBoundingBox(aabb, new Rectangle());
+    public Rectangle getBoundingBox(Body body) {
+        return getBoundingBox(body, new Rectangle());
     }
-    public Rectangle getBoundingBox(AABB aabb, Rectangle copyTo) {
-        validateAABB(aabb);
+    public Rectangle getBoundingBox(Body body, Rectangle copyTo) {
+        validateAABB(body);
         if(copyTo == null)copyTo = new Rectangle();
-        return copyTo.set(getOriginalBoundingBox(aabb));
+        return copyTo.set(getOriginalBoundingBox(body));
     }
 
     /**
      * Doesn't make a copy of the actual bounding box.
-     * @param aabb The AABB to get the original bounding box for.
+     * @param body The AABB to get the original bounding box for.
      * @return The original bounding box.
      */
-    private Rectangle getOriginalBoundingBox(AABB aabb){
-        return boundingBoxes.get(aabb);
+    private Rectangle getOriginalBoundingBox(Body body){
+        return boundingBoxes.get(body);
     }
 
-    private void validateAABB(AABB aabb){
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot  be null!");
-        if(!contains(aabb))throw new IllegalArgumentException("The specified AABB is not contained in this world!");
+    private void validateAABB(Body body){
+        KleeHelper.paramRequireNonNull(body, "AABB cannot  be null!");
+        if(!contains(body))throw new IllegalArgumentException("The specified AABB is not contained in this world!");
     }
 
     @Override
-    public void forceUpdate(AABB aabb, float goalX, float goalY, float width, float height){
-        validateAABB(aabb);
-        Rectangle boundingBox = getOriginalBoundingBox(aabb);
+    public void forceUpdate(Body body, float goalX, float goalY, float width, float height){
+        validateAABB(body);
+        Rectangle boundingBox = getOriginalBoundingBox(body);
         //return if the AABB didn't move or change size
         if(goalX == boundingBox.x && goalY == boundingBox.y && width == boundingBox.width && height == boundingBox.height)return;
         //remove from all chunks
-        removeFromContainedChunks(aabb, boundingBox);
+        removeFromContainedChunks(body, boundingBox);
         //change size & location
         boundingBox.set(goalX, goalY, width, height);
         //add new to all chunks
-        addToContainedChunks(aabb, boundingBox);
+        addToContainedChunks(body, boundingBox);
     }
     @Override
-    public void forceUpdate(AABB aabb, float goalX, float goalY){
-        validateAABB(aabb);
-        Rectangle boundingBox = getOriginalBoundingBox(aabb);
-        forceUpdate(aabb,goalX,goalY,boundingBox.width,boundingBox.height);
+    public void forceUpdate(Body body, float goalX, float goalY){
+        validateAABB(body);
+        Rectangle boundingBox = getOriginalBoundingBox(body);
+        forceUpdate(body,goalX,goalY,boundingBox.width,boundingBox.height);
     }
 
     //temporary fields which can be reused for less object heap.
@@ -110,40 +110,38 @@ public class SimpleCollisionWorld<AABB extends ISweptAABB> extends AbstractChunk
     private final Rectangle _sum = new Rectangle();
     private final Single<Float> _hitTime = new Single<>(0f);
     private final Vector2 _rayHit = new Vector2();
-    private final Set<AABB> _alreadyLooped = new HashSet<>();
+    private final Set<Body> _alreadyLooped = new HashSet<>();
 
     @Override
-    public CollisionResponse update(AABB aabb, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
+    public CollisionResponse update(Body body, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
         //simulate collision to find the best possible spot
-        CollisionResponse response = simulate(aabb,displacement,width,height,writeTo);
+        CollisionResponse response = simulate(body,displacement,width,height,writeTo);
         //update the AABB in the world
-        forceUpdate(aabb, response.bestGoalX, response.bestGoalY, width, height);
+        forceUpdate(body, response.bestGoalX, response.bestGoalY, width, height);
         return response;
     }
 
     @Override
-    public CollisionResponse update(AABB aabb, Vector2 displacement, CollisionResponse response) {
-        validateAABB(aabb);
-        Rectangle rectangle = getOriginalBoundingBox(aabb);
-        return update(aabb, displacement, rectangle.width, rectangle.height, response);
+    public CollisionResponse update(Body body, Vector2 displacement, CollisionResponse response) {
+        validateAABB(body);
+        Rectangle rectangle = getOriginalBoundingBox(body);
+        return update(body, displacement, rectangle.width, rectangle.height, response);
     }
 
     @Override
-    public CollisionResponse simulate(AABB aabb, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
-        validateAABB(aabb);
+    public CollisionResponse simulate(Body body, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
+        validateAABB(body);
         if(writeTo == null)writeTo = new CollisionResponse();
         writeTo.clear();
-        writeTo.aabb = aabb;
-        Rectangle rectangle = getOriginalBoundingBox(aabb);
+        writeTo.body = body;
+        Rectangle rectangle = getOriginalBoundingBox(body);
+        //set the displacement
         if(displacement == null){
             _displacement.set(0,0);
         }else{
             _displacement.set(displacement);
         }
         Rectangle goalRect = _goalRect.set(rectangle.x + _displacement.x, rectangle.y + _displacement.y,  width, height);
-
-        //set the displacement
-        _displacement.set(displacement);
 
         //define the area the rectangle will move in
         Rectangle holeMovementArea = _moveArea.set(rectangle).merge(goalRect);
@@ -152,10 +150,10 @@ public class SimpleCollisionWorld<AABB extends ISweptAABB> extends AbstractChunk
         final CollisionResponse finalizedResponse = writeTo;
         //loop chunks in the area from start to goal position
         forContainingChunk(holeMovementArea, (chunkX, chunkY) -> {
-            Set<AABB> aabbs = chunkManager.getBodies(chunkX,chunkY);
+            Set<Body> bodies = chunkManager.getBodies(chunkX,chunkY);
             //for all AABBs in the chunk
-            for(AABB target : aabbs){
-                if(target.equals(aabb))continue;
+            for(Body target : bodies){
+                if(target.equals(body))continue;
                 if(!_alreadyLooped.add(target))continue; //skip if the AABB was already been tested
                 Rectangle other = getOriginalBoundingBox(target);
                 //now collision gets checked
@@ -210,10 +208,10 @@ public class SimpleCollisionWorld<AABB extends ISweptAABB> extends AbstractChunk
     }
 
     @Override
-    public CollisionResponse simulate(AABB aabb, Vector2 displacement, CollisionResponse writeTo) {
-        validateAABB(aabb);
-        Rectangle rectangle = getOriginalBoundingBox(aabb);
-        return simulate(aabb,displacement,rectangle.width,rectangle.height,writeTo);
+    public CollisionResponse simulate(Body body, Vector2 displacement, CollisionResponse writeTo) {
+        validateAABB(body);
+        Rectangle rectangle = getOriginalBoundingBox(body);
+        return simulate(body,displacement,rectangle.width,rectangle.height,writeTo);
     }
 
 
