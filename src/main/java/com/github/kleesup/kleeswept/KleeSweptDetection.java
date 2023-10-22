@@ -2,6 +2,7 @@ package com.github.kleesup.kleeswept;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.github.kleesup.kleeswept.util.Single;
 
 import java.util.*;
 
@@ -50,7 +51,7 @@ public class KleeSweptDetection {
     public static boolean doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, Vector2 hitPosition, Vector2 normal, Vector2 tempMagWriteTo){
         Vector2 magnitude = tempMagWriteTo != null ? tempMagWriteTo : new Vector2();
         KleeHelper.calculateMagnitude(x,y,goalX,goalY,magnitude);
-        return doesRayIntersectAABB(x,y,magnitude,aabb,hitPosition,normal);
+        return doesRayIntersectAABB(x,y,magnitude,aabb,hitPosition,normal,null);
     }
     public static boolean doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, Vector2 hitPosition, Vector2 normal){
         return doesRayIntersectAABB(x,y,goalX,goalY,aabb,hitPosition, normal, null);
@@ -66,7 +67,7 @@ public class KleeSweptDetection {
      * @param normal Required to write the ray-hit normal.
      * @return Whether the ray hit the AABB.
      */
-    public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, Vector2 normal){
+    public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, Vector2 normal, Single<Float> outHitTime){
         KleeHelper.paramRequireNonNull(magnitude, "Magnitude cannot be null!");
         KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
 
@@ -94,21 +95,25 @@ public class KleeSweptDetection {
         //condition for a collision
         if(firstExit > lastEntry && firstExit > 0 && lastEntry < 1){
             if(hitPosition == null)hitPosition = new Vector2();
-            if(normal == null)normal = new Vector2();
-            normal.setZero();
             hitPosition.set(x + magnitude.x * lastEntry, y + magnitude.y * lastEntry);
 
-            //calculating hit normal
-            float dx = hitPosition.x - getCenterX(aabb);
-            float dy = hitPosition.y - getCenterY(aabb);
-            float px = (aabb.getWidth()/2) - Math.abs(dx);
-            float py = (aabb.getHeight()/2) - Math.abs(dy);
+            if(outHitTime != null)outHitTime.set(lastEntry);
 
             //calculating hit normal
-            if(px < py){
-                normal.x = (dx > 0 ? 1 : 0) - (dx < 0 ? 1 : 0);
-            }else{
-                normal.y = (dy > 0 ? 1 : 0) - (dy < 0 ? 1 : 0);
+            if(normal != null){
+                normal.setZero();
+
+                float dx = hitPosition.x - getCenterX(aabb);
+                float dy = hitPosition.y - getCenterY(aabb);
+                float px = (aabb.getWidth()/2) - Math.abs(dx);
+                float py = (aabb.getHeight()/2) - Math.abs(dy);
+
+                //calculating hit normal
+                if(px < py){
+                    normal.x = (dx > 0 ? 1 : 0) - (dx < 0 ? 1 : 0);
+                }else{
+                    normal.y = (dy > 0 ? 1 : 0) - (dy < 0 ? 1 : 0);
+                }
             }
             return true;
         }
@@ -127,32 +132,21 @@ public class KleeSweptDetection {
      * @param displacement The displacement of the dynamic aabb.
      * @param normal Required to write the hit normal.
      * @param tempSum A temporary rectangle object where the summed AABB can be written into (Useful when less object creation is desired).
-     * @param tempMag A temporary vector object where the magnitude can be written into (Useful when less object creation is desired).
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return {@code true} if the dynamic aabb collides with the static aabb, {@code false} otherwise.
      */
     public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, Vector2 normal,
-                                               Rectangle tempSum, Vector2 tempMag, Vector2 tempRayHit){
+                                               Rectangle tempSum, Vector2 tempRayHit, Single<Float> outHitTime){
         KleeHelper.paramRequireNonNull(dynamicBox, "Dynamic AABB cannot be null!");
         KleeHelper.paramRequireNonNull(staticBox, "Static AABB cannot be null!");
         if(displacement == null)displacement = new Vector2();
         KleeHelper.calculateSumAABB(dynamicBox, staticBox, tempSum);
-        float goalX = getCenterX(dynamicBox) + displacement.x;
-        float goalY = getCenterY(dynamicBox) + displacement.y;
 
         normal = normal == null ? new Vector2() : normal.setZero();
-        if(tempRayHit == null)tempRayHit = new Vector2();
-        if(doesRayIntersectAABB(getCenterX(dynamicBox), getCenterY(dynamicBox), goalX, goalY, staticBox, tempRayHit, normal, tempMag)){
-            //resolution
-            float penetrationX = normal.x != 0 ? goalX - tempRayHit.x : 0;
-            float penetrationY = normal.y != 0 ? goalY - tempRayHit.y : 0;
-            displacement.sub(penetrationX, penetrationY);
-            return true;
-        }
-        return false;
+        return doesRayIntersectAABB(getCenterX(dynamicBox), getCenterY(dynamicBox), displacement, tempSum, tempRayHit, normal, outHitTime);
     }
     public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, Vector2 normal){
-        return checkDynamicVsStatic(dynamicBox, staticBox, displacement, normal, null, null, null);
+        return checkDynamicVsStatic(dynamicBox, staticBox, displacement, normal, null, null,null);
     }
 
     /**
@@ -162,29 +156,27 @@ public class KleeSweptDetection {
      * @param displacement The displacement of the dynamic aabb.
      * @param tempNormal A temporary vector object where the hit-normal can be written into (Useful when less object creation is desired).
      * @param tempSum A temporary rectangle object where the summed AABB can be written into (Useful when less object creation is desired).
-     * @param tempMag A temporary vector object where the magnitude can be written into (Useful when less object creation is desired).
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return A collection of all the static rectangles that are hit.
      */
     public static Collection<Rectangle> checkDynamicVsMultipleStatic(Rectangle dynamicBox, Collection<Rectangle> staticBoxes, Vector2 displacement, Vector2 tempNormal,
-                                                       Rectangle tempSum, Vector2 tempMag, Vector2 tempRayHit){
+                                                       Rectangle tempSum, Vector2 tempRayHit){
         KleeHelper.paramRequireNonNull(dynamicBox, "Dynamic AABB cannot be null");
-        if(staticBoxes == null || staticBoxes.isEmpty())return staticBoxes != null ? staticBoxes : new ArrayList<Rectangle>();
+        if(staticBoxes == null || staticBoxes.isEmpty())return staticBoxes != null ? staticBoxes : new ArrayList<>();
         if(tempNormal == null)tempNormal = new Vector2();
         if(tempSum == null)tempSum = new Rectangle();
-        if(tempMag == null)tempMag = new Vector2();
         if(tempRayHit == null)tempRayHit = new Vector2();
         Iterator<Rectangle> itr = staticBoxes.iterator();
         while (itr.hasNext()){
             Rectangle staticBox = itr.next();
-            if(!checkDynamicVsStatic(dynamicBox, staticBox, displacement, tempNormal, tempSum, tempMag, tempRayHit)){
+            if(!checkDynamicVsStatic(dynamicBox, staticBox, displacement, tempNormal, tempSum, tempRayHit, null)){
                 itr.remove();
             }
         }
         return staticBoxes;
     }
     public static Collection<Rectangle> checkDynamicVsMultipleStatic(Rectangle dynamicBox, Collection<Rectangle> staticBoxes, Vector2 displacement){
-        return checkDynamicVsMultipleStatic(dynamicBox, staticBoxes, displacement, null, null, null, null);
+        return checkDynamicVsMultipleStatic(dynamicBox, staticBoxes, displacement, null, null, null);
     }
 
     /*
@@ -201,17 +193,16 @@ public class KleeSweptDetection {
      * @param secondDisplacement The displacement of the second dynamic aabb.
      * @param normal Required to write the hit normal.
      * @param tempSum A temporary rectangle object where the summed AABB can be written into (Useful when less object creation is desired).
-     * @param tempMag A temporary vector object where the magnitude can be written into (Useful when less object creation is desired).
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return {@code true} if the both AABBs collide with each other, {@code false} otherwise.
      */
     public static boolean checkDynamicVsDynamic(Rectangle firstBox, Vector2 firstDisplacement, Rectangle secondBox, Vector2 secondDisplacement, Vector2 normal,
-                                               Rectangle tempSum, Vector2 tempMag, Vector2 tempRayHit){
+                                               Rectangle tempSum, Vector2 tempRayHit){
         firstDisplacement.set(firstDisplacement.x - secondDisplacement.x, firstDisplacement.y - secondDisplacement.y);
-        return checkDynamicVsStatic(firstBox, secondBox, firstDisplacement, normal, tempSum, tempMag, tempRayHit);
+        return checkDynamicVsStatic(firstBox, secondBox, firstDisplacement, normal, tempSum, tempRayHit, null);
     }
     public static boolean checkDynamicVsDynamic(Rectangle firstBox, Vector2 firstDisplacement, Rectangle secondBox, Vector2 secondDisplacement, Vector2 normal){
-        return checkDynamicVsDynamic(firstBox, firstDisplacement, secondBox, secondDisplacement, normal, null, null, null);
+        return checkDynamicVsDynamic(firstBox, firstDisplacement, secondBox, secondDisplacement, normal, null, null);
     }
 
     /**
@@ -221,29 +212,27 @@ public class KleeSweptDetection {
      * @param otherBoxes The collection of dynamic aabbs with their displacement.
      * @param tempNormal A temporary vector object where the hit-normal can be written into (Useful when less object creation is desired).
      * @param tempSum A temporary rectangle object where the summed AABB can be written into (Useful when less object creation is desired).
-     * @param tempMag A temporary vector object where the magnitude can be written into (Useful when less object creation is desired).
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return A map containing all the dynamic aabbs that were hit (with their displacements).
      */
     public static Map<Rectangle, Vector2> checkDynamicVsMultipleDynamic(Rectangle firstBox, Vector2 firstDisplacement, Map<Rectangle, Vector2> otherBoxes, Vector2 tempNormal,
-                                                                            Rectangle tempSum, Vector2 tempMag, Vector2 tempRayHit){
+                                                                            Rectangle tempSum,  Vector2 tempRayHit){
         KleeHelper.paramRequireNonNull(firstBox, "Dynamic AABB cannot be null");
-        if(otherBoxes == null || otherBoxes.isEmpty())return otherBoxes != null ? otherBoxes : new HashMap<Rectangle, Vector2>();
+        if(otherBoxes == null || otherBoxes.isEmpty())return otherBoxes != null ? otherBoxes : new HashMap<>();
         if(tempNormal == null)tempNormal = new Vector2();
         if(tempSum == null)tempSum = new Rectangle();
-        if(tempMag == null)tempMag = new Vector2();
         if(tempRayHit == null)tempRayHit = new Vector2();
         Iterator<Map.Entry<Rectangle, Vector2>> itr = otherBoxes.entrySet().iterator();
         while (itr.hasNext()){
             Map.Entry<Rectangle, Vector2> entry = itr.next();
-            if(!checkDynamicVsDynamic(firstBox, firstDisplacement, entry.getKey(), entry.getValue(), tempNormal, tempSum, tempMag, tempRayHit)){
+            if(!checkDynamicVsDynamic(firstBox, firstDisplacement, entry.getKey(), entry.getValue(), tempNormal, tempSum, tempRayHit)){
                 itr.remove();
             }
         }
         return otherBoxes;
     }
     public static Map<Rectangle, Vector2> checkDynamicVsMultipleDynamic(Rectangle firstBox, Vector2 firstDisplacement, Map<Rectangle, Vector2> otherBoxes){
-        return checkDynamicVsMultipleDynamic(firstBox, firstDisplacement, otherBoxes, null, null, null, null);
+        return checkDynamicVsMultipleDynamic(firstBox, firstDisplacement, otherBoxes, null, null, null);
     }
 
 

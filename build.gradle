@@ -38,17 +38,10 @@ if (JavaVersion.current().isJava8Compatible()) {
 compileJava {
 	// Targeting Java 7 is the lowest version you could need to go at this point.
 	// libGDX itself targets a mix of Java 7 (for most backends) and 8 (for LWJGL3).
-    if(JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_20)){
-        sourceCompatibility = 8
-        targetCompatibility = 8
+    sourceCompatibility = 8
+    targetCompatibility = 8
+    if (JavaVersion.current().isJava9Compatible()) {
         options.release.set(8)
-    }
-    else {
-        sourceCompatibility = 7
-        targetCompatibility = 7
-        if (JavaVersion.current().isJava9Compatible()) {
-            options.release.set(7)
-        }
     }
 }
 

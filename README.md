@@ -7,25 +7,37 @@
 - high velocity collision detection
 - fixed tunneling problem
 - detailed output with hit-position, normal, hit-time, etc.
+- chunked world implementation and management
 
 ![Alt Text](https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExYmZiNjdmYThmNDZmYzM0NzE2NDUyZmNlY2JlMzdhNTg0YzU2ZDFhMCZlcD12MV9pbnRlcm5hbF9naWZzX2dpZklkJmN0PWc/XrHcgxio3xjnXBAcb5/giphy.gif)
 
 ## How to use
 
 ```java
-//create two AABBs, you can either use SimpleAABB for standalone or RectangleAABB which uses Rectangle from LibGDX
-AABB player = new SimpleAABB(0,0,2,2);
-AABB collider = new SimpleAABB(4,0,3,3);
+//create a new world instance with a fixed chunk size
+SimpleCollisionWorld<SweptAABB> world = new SimpleCollisionWorld<>(chunkSize);
 
-//now we define the goal where the player wants to move at. 
-//NOTE: always calculate movements based of the CENTER of the AABB as this is where the library calculates collisions.
-//in this example, we move by +10 units on the x-axis.
-float goalX = player.getCenterX() + 10;
-float goalY = player.getCenterY();
+//initialize world objects
+SweptAABB player = new SweptAABB();
+SweptAABB obstacle = new SweptAABB();
 
-//now we can get our result. It contains various information of our collision.
-SweptResult result = KleeSweptDetection.checkAABBvsAABB(player, collider, goalX, goalY);
-System.out.println(result.isHit);
+//add them to the world with their bounding box
+world.addBody(player, new Rectangle(0,0,10,10));
+world.addBody(obstacle, new Rectangle(5,0,10,10));
+
+//retrieving a world objects bounding box
+Rectangle playerBoundingBox = world.getBoundingBox(player);
+Rectangle obstacleBoundingBox = world.getBoundingBox(obstacle);
+
+CollisionResponse response;
+Vector2 displacement = new Vector2(1, 2);
+//updating moves the body in the world to the best possible position and retrieves a collision response
+response = world.update(player, displacement);
+//simulating doesn't actually move the body in the world but still checks for collisions
+response = world.simulate(player, displacement);
+//forceUpdate forces a teleport/resize in the world (no checks for collisions)
+world.forceUpdate(player, playerBoundingBox.x + displacement.x, playerBoundingBox.y + displacement.y);
+
 ```
 
 ## Implementation

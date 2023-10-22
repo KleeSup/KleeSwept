@@ -1,6 +1,4 @@
-package com.github.kleesup.kleeswept.world.impl;
-
-import com.github.kleesup.kleeswept.world.ISweptAABB;
+package com.github.kleesup.kleeswept.world.body;
 
 /**
  * <br>Created on 13.09.2023</br>

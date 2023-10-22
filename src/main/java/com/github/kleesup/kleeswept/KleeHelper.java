@@ -8,7 +8,7 @@ import com.badlogic.gdx.math.Vector2;
  * Simple utility class.
  * <br>Created on 17.04.2023</br>
  * @author KleeSup
- * @version 1.1
+ * @version 1.2
  * @since 1.0.0
  */
 public final class KleeHelper {
@@ -63,6 +63,34 @@ public final class KleeHelper {
     }
     public static Rectangle calculateSumAABB(Rectangle aabb, Rectangle other){
         return calculateSumAABB(aabb, other, null);
+    }
+
+    /**
+     * Pairs two integers into a long.
+     * @param x The first integer of the pair.
+     * @param y The second integer of the pair.
+     * @return The pair stored into a long.
+     */
+    public static long pairLong(int x, int y){
+        return ((x & 0xFFFFFFFFL) | (y & 0xFFFFFFFFL) << 32);
+    }
+
+    /**
+     * Retrieves the first integer of a pair.
+     * @param pair The long where the integers were paired in.
+     * @return The first integer if a pair.
+     */
+    public static int unpairIntY(long pair) {
+        return (int) (pair >>> 32);
+    }
+
+    /**
+     * Retrieves the second integer of a pair.
+     * @param pair The long where the integers were paired in.
+     * @return The second integer if a pair.
+     */
+    public static int unpairIntX(long pair) {
+        return (int) pair;
     }
 
 }
