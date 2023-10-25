@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.KleeSweptDetection;
+import com.github.kleesup.kleeswept.util.CollisionComparatorBuilder;
 import com.github.kleesup.kleeswept.util.Single;
 import com.github.kleesup.kleeswept.world.body.ISweptBody;
 import com.github.kleesup.kleeswept.world.chunk.AbstractChunkCollisionWorld;
@@ -17,15 +18,52 @@ import java.util.*;
  * If this is not wanted a custom implementation is required. The class is NOT Thread-Safe!
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.1
  */
 public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
 
     private final Map<Body, Rectangle> boundingBoxes = new IdentityHashMap<>();
+    private final CollisionComparatorBuilder<Body> defaultBuilder;
+    private CollisionComparatorBuilder<Body> builder;
 
     public SimpleCollisionWorld(int chunkSize) {
         super(chunkSize, new EfficientChunkManager<>());
+        //sorting collisions for smallest collision time, if it is the same -> sort for highest velocity axis
+        this.defaultBuilder = new CollisionComparatorBuilder<Body>() {
+            @Override
+            public Comparator<CollisionResponse.Collision> build(Body body, Vector2 displacement, float newWidth, float newHeight) {
+                return new Comparator<CollisionResponse.Collision>() {
+                    @Override
+                    public int compare(CollisionResponse.Collision c1, CollisionResponse.Collision c2) {
+                        if(c1.hitTime == c2.hitTime){
+                            if(_displacement.x > _displacement.y){
+                                if(c1.normalX != 0 && c2.normalX == 0){
+                                    return -1;
+                                }else if(c1.normalX == 0 && c2.normalX != 0){
+                                    return 1;
+                                }else{
+                                    return 0;
+                                }
+                            }else if(_displacement.x < _displacement.y){
+                                if(c1.normalY != 0 && c2.normalY == 0){
+                                    return -1;
+                                }else if(c1.normalY == 0 && c2.normalY != 0){
+                                    return 1;
+                                }else{
+                                    return 0;
+                                }
+                            }else{
+                                return 0;
+                            }
+                        }else{
+                            return Float.compare(c1.hitTime, c2.hitTime);
+                        }
+                    }
+                };
+            }
+        };
+        setDefaultComparatorBuilder();
     }
 
     @Override
@@ -162,41 +200,22 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
             }
         });
 
-        //sorting collisions for smallest collision time, if it is the same -> sort for highest velocity axis
-        finalizedResponse.getCollisions().sort(new Comparator<CollisionResponse.Collision>() {
-            @Override
-            public int compare(CollisionResponse.Collision c1, CollisionResponse.Collision c2) {
-                if(c1.hitTime == c2.hitTime){
-                    if(_displacement.x > _displacement.y){
-                        if(c1.normalX != 0 && c2.normalX == 0){
-                            return -1;
-                        }else if(c1.normalX == 0 && c2.normalX != 0){
-                            return 1;
-                        }else{
-                            return 0;
-                        }
-                    }else if(_displacement.x < _displacement.y){
-                        if(c1.normalY != 0 && c2.normalY == 0){
-                            return -1;
-                        }else if(c1.normalY == 0 && c2.normalY != 0){
-                            return 1;
-                        }else{
-                            return 0;
-                        }
-                    }else{
-                        return 0;
-                    }
-                }else{
-                    return Float.compare(c1.hitTime, c2.hitTime);
-                }
-            }
-        });
+        //sorting collisions
+        finalizedResponse.getCollisions().sort(builder.build(body, _displacement, width, height));
 
         //resolving collisions
         for(CollisionResponse.Collision collision : finalizedResponse.getCollisions()){
+            Rectangle other = getOriginalBoundingBox((Body) collision.target);
+            collision.isHit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
+            collision.normalX = _normal.x;
+            collision.normalY = _normal.y;
+            collision.hitTime = _hitTime.get();
             if(!collision.isHit)continue;
-            _displacement.x += collision.normalX * Math.abs(_displacement.x) * (1-collision.hitTime);
-            _displacement.y += collision.normalY * Math.abs(_displacement.y) * (1-collision.hitTime);
+            if(collision.target.resolveCollision(body, collision)){
+                _displacement.x += collision.normalX * Math.abs(_displacement.x) * (1-collision.hitTime);
+                _displacement.y += collision.normalY * Math.abs(_displacement.y) * (1-collision.hitTime);
+                collision.resolved = true;
+            }
         }
 
         //finally, write the best goal position into the response
@@ -214,5 +233,19 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
         return simulate(body,displacement,rectangle.width,rectangle.height,writeTo);
     }
 
+    /**
+     * Sets the current comparator builder used for collision resolution.
+     * @param builder The builder to set.
+     */
+    public void setComparatorBuilder(CollisionComparatorBuilder<Body> builder) {
+        this.builder = builder;
+    }
+
+    /**
+     * Sets the builder back to the default builder.
+     */
+    public void setDefaultComparatorBuilder() {
+        this.builder = defaultBuilder;
+    }
 
 }

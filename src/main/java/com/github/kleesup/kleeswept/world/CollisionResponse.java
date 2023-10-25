@@ -8,7 +8,7 @@ import java.util.*;
  * The object that is returned when a collision test was done.
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.1
  */
 public class CollisionResponse {
@@ -64,6 +64,11 @@ public class CollisionResponse {
          * A number between 0 and 1 that determines how much the colliding AABB needs to move out of another AABB.
          */
         public float hitTime;
+
+        /**
+         * Whether this collision was resolved.
+         */
+        public boolean resolved;
 
         public Collision(ISweptBody target, boolean isHit, float normalX, float normalY, float hitTime) {
             this.target = target;
