@@ -15,11 +15,11 @@
 
 ```java
 //create a new world instance with a fixed chunk size
-SimpleCollisionWorld<SweptAABB> world = new SimpleCollisionWorld<>(chunkSize);
+SimpleCollisionWorld<SweptBody> world = new SimpleCollisionWorld<>(chunkSize);
 
 //initialize world objects
-SweptAABB player = new SweptAABB();
-SweptAABB obstacle = new SweptAABB();
+SweptBody player = new SweptAABB();
+SweptBody obstacle = new SweptAABB();
 
 //add them to the world with their bounding box
 world.addBody(player, new Rectangle(0,0,10,10));
