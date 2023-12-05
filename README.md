@@ -18,8 +18,8 @@
 SimpleCollisionWorld<SweptBody> world = new SimpleCollisionWorld<>(chunkSize);
 
 //initialize world objects
-SweptBody player = new SweptAABB();
-SweptBody obstacle = new SweptAABB();
+SweptBody player = new SweptBody();
+SweptBody obstacle = new SweptBody();
 
 //add them to the world with their bounding box
 world.addBody(player, new Rectangle(0,0,10,10));
