@@ -18,7 +18,7 @@ import java.util.*;
  * If this is not wanted a custom implementation is required. The class is NOT Thread-Safe!
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.1
+ * @version 1.2
  * @since 1.0.1
  */
 public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
@@ -211,7 +211,7 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
             collision.normalY = _normal.y;
             collision.hitTime = _hitTime.get();
             if(!collision.isHit)continue;
-            if(collision.target.resolveCollision(body, collision)){
+            if(body.resolveCollision(collision.target, collision)){
                 _displacement.x += collision.normalX * Math.abs(_displacement.x) * (1-collision.hitTime);
                 _displacement.y += collision.normalY * Math.abs(_displacement.y) * (1-collision.hitTime);
                 collision.resolved = true;
