@@ -8,7 +8,7 @@ import com.github.kleesup.kleeswept.world.body.ISweptBody;
  * <br>Created on 13.09.2023</br>
  *
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.1
  */
 public interface CollisionWorld<Body extends ISweptBody> {
@@ -52,6 +52,7 @@ public interface CollisionWorld<Body extends ISweptBody> {
      * @return The rectangle bounding box (copy) of the AABB.
      */
     Rectangle getBoundingBox(Body body);
+    Rectangle getBoundingBox(Body body, Rectangle writeTo);
 
     /**
      * Calculates collisions between the current position of the AABB and the goal position.

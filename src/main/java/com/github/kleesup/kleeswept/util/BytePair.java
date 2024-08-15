@@ -20,6 +20,12 @@ public class BytePair {
         return this;
     }
 
+    public BytePair setZero(){
+        this.x = 0;
+        this.y = 0;
+        return this;
+    }
+
     public byte getX() {
         return x;
     }

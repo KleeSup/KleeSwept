@@ -2,6 +2,7 @@ package com.github.kleesup.kleeswept;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.github.kleesup.kleeswept.util.BytePair;
 import com.github.kleesup.kleeswept.util.Single;
 
 import java.util.*;
@@ -10,7 +11,7 @@ import java.util.*;
  *
  * <br>Created on 22.04.2023</br>
  * @author KleeSup
- * @version 1.2
+ * @version 1.3
  * @since 1.0.0
  */
 public class KleeSweptDetection {
@@ -48,12 +49,12 @@ public class KleeSweptDetection {
      * @param tempMagWriteTo A temporary vector object where the magnitude can be written into (Useful when less object creation is desired).
      * @return The result of the swept collision test.
      */
-    public static boolean doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, Vector2 hitPosition, Vector2 normal, Vector2 tempMagWriteTo){
+    public static boolean doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, Vector2 hitPosition, BytePair normal, Vector2 tempMagWriteTo){
         Vector2 magnitude = tempMagWriteTo != null ? tempMagWriteTo : new Vector2();
         KleeHelper.calculateMagnitude(x,y,goalX,goalY,magnitude);
         return doesRayIntersectAABB(x,y,magnitude,aabb,hitPosition,normal,null);
     }
-    public static boolean doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, Vector2 hitPosition, Vector2 normal){
+    public static boolean doesRayIntersectAABB(float x, float y, float goalX, float goalY, Rectangle aabb, Vector2 hitPosition, BytePair normal){
         return doesRayIntersectAABB(x,y,goalX,goalY,aabb,hitPosition, normal, null);
     }
 
@@ -67,7 +68,7 @@ public class KleeSweptDetection {
      * @param normal Required to write the ray-hit normal.
      * @return Whether the ray hit the AABB.
      */
-    public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, Vector2 normal, Single<Float> outHitTime){
+    public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, BytePair normal, Single<Float> outHitTime){
         float lastEntry = Float.NEGATIVE_INFINITY;
         float firstExit = Float.POSITIVE_INFINITY;
 
@@ -109,9 +110,9 @@ public class KleeSweptDetection {
 
                 //calculating hit normal
                 if(px < py){
-                    normal.x = (dx > 0 ? 1 : 0) - (dx < 0 ? 1 : 0);
+                    normal.x = (byte) ((dx > 0 ? 1 : 0) - (dx < 0 ? 1 : 0));
                 }else{
-                    normal.y = (dy > 0 ? 1 : 0) - (dy < 0 ? 1 : 0);
+                    normal.y = (byte) ((dy > 0 ? 1 : 0) - (dy < 0 ? 1 : 0));
                 }
             }
             return true;
@@ -134,15 +135,15 @@ public class KleeSweptDetection {
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return {@code true} if the dynamic aabb collides with the static aabb, {@code false} otherwise.
      */
-    public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, Vector2 normal,
+    public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, BytePair normal,
                                                Rectangle tempSum, Vector2 tempRayHit, Single<Float> outHitTime){
         if(displacement == null)displacement = new Vector2();
         KleeHelper.calculateSumAABB(dynamicBox, staticBox, tempSum);
 
-        normal = normal == null ? new Vector2() : normal.setZero();
+        normal = normal == null ? new BytePair() : normal.setZero();
         return doesRayIntersectAABB(getCenterX(dynamicBox), getCenterY(dynamicBox), displacement, tempSum, tempRayHit, normal, outHitTime);
     }
-    public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, Vector2 normal){
+    public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, BytePair normal){
         return checkDynamicVsStatic(dynamicBox, staticBox, displacement, normal, null, null,null);
     }
 
@@ -156,10 +157,10 @@ public class KleeSweptDetection {
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return A collection of all the static rectangles that are hit.
      */
-    public static Collection<Rectangle> checkDynamicVsMultipleStatic(Rectangle dynamicBox, Collection<Rectangle> staticBoxes, Vector2 displacement, Vector2 tempNormal,
+    public static Collection<Rectangle> checkDynamicVsMultipleStatic(Rectangle dynamicBox, Collection<Rectangle> staticBoxes, Vector2 displacement, BytePair tempNormal,
                                                        Rectangle tempSum, Vector2 tempRayHit){
         if(staticBoxes == null || staticBoxes.isEmpty())return staticBoxes != null ? staticBoxes : new ArrayList<>();
-        if(tempNormal == null)tempNormal = new Vector2();
+        if(tempNormal == null)tempNormal = new BytePair();
         if(tempSum == null)tempSum = new Rectangle();
         if(tempRayHit == null)tempRayHit = new Vector2();
         Iterator<Rectangle> itr = staticBoxes.iterator();
@@ -192,12 +193,12 @@ public class KleeSweptDetection {
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return {@code true} if the both AABBs collide with each other, {@code false} otherwise.
      */
-    public static boolean checkDynamicVsDynamic(Rectangle firstBox, Vector2 firstDisplacement, Rectangle secondBox, Vector2 secondDisplacement, Vector2 normal,
+    public static boolean checkDynamicVsDynamic(Rectangle firstBox, Vector2 firstDisplacement, Rectangle secondBox, Vector2 secondDisplacement, BytePair normal,
                                                Rectangle tempSum, Vector2 tempRayHit){
         firstDisplacement.set(firstDisplacement.x - secondDisplacement.x, firstDisplacement.y - secondDisplacement.y);
         return checkDynamicVsStatic(firstBox, secondBox, firstDisplacement, normal, tempSum, tempRayHit, null);
     }
-    public static boolean checkDynamicVsDynamic(Rectangle firstBox, Vector2 firstDisplacement, Rectangle secondBox, Vector2 secondDisplacement, Vector2 normal){
+    public static boolean checkDynamicVsDynamic(Rectangle firstBox, Vector2 firstDisplacement, Rectangle secondBox, Vector2 secondDisplacement, BytePair normal){
         return checkDynamicVsDynamic(firstBox, firstDisplacement, secondBox, secondDisplacement, normal, null, null);
     }
 
@@ -211,10 +212,10 @@ public class KleeSweptDetection {
      * @param tempRayHit A temporary vector object where the ray-hit result can be written into (Useful when less object creation is desired).
      * @return A map containing all the dynamic aabbs that were hit (with their displacements).
      */
-    public static Map<Rectangle, Vector2> checkDynamicVsMultipleDynamic(Rectangle firstBox, Vector2 firstDisplacement, Map<Rectangle, Vector2> otherBoxes, Vector2 tempNormal,
+    public static Map<Rectangle, Vector2> checkDynamicVsMultipleDynamic(Rectangle firstBox, Vector2 firstDisplacement, Map<Rectangle, Vector2> otherBoxes, BytePair tempNormal,
                                                                             Rectangle tempSum,  Vector2 tempRayHit){
         if(otherBoxes == null || otherBoxes.isEmpty())return otherBoxes != null ? otherBoxes : new HashMap<>();
-        if(tempNormal == null)tempNormal = new Vector2();
+        if(tempNormal == null)tempNormal = new BytePair();
         if(tempSum == null)tempSum = new Rectangle();
         if(tempRayHit == null)tempRayHit = new Vector2();
         Iterator<Map.Entry<Rectangle, Vector2>> itr = otherBoxes.entrySet().iterator();

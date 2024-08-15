@@ -9,7 +9,7 @@ import java.util.*;
  * The object that is returned when a collision test was done.
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.2
+ * @version 1.3
  * @since 1.0.1
  */
 public class CollisionResponse {
@@ -52,14 +52,14 @@ public class CollisionResponse {
          *  -1.0f -> target AABB was hit on the left side.
          *  0.0f -> target AABB wasn't hit on left or right, it's probably a vertical hit.
          */
-        public float normalX;
+        public byte normalX;
         /**
          *  Interpretation:
          *  1.0f -> target AABB was hit on the top side.
          *  -1.0f -> target AABB was hit on the bottom side.
          *  0.0f -> target AABB wasn't hit on top or bottom, it's probably a horizontal hit.
          */
-        public float normalY;
+        public byte normalY;
 
         /**
          * A number between 0 and 1 that determines how much the colliding AABB needs to move out of another AABB.
@@ -71,7 +71,7 @@ public class CollisionResponse {
          */
         public boolean resolved;
 
-        public Collision(ISweptBody target, boolean isOverlapping, float normalX, float normalY, float hitTime) {
+        public Collision(ISweptBody target, boolean isOverlapping, byte normalX, byte normalY, float hitTime) {
             this.target = target;
             this.isOverlapping = isOverlapping;
             this.normalX = normalX;
@@ -82,7 +82,7 @@ public class CollisionResponse {
         public Collision() {
         }
 
-        public Collision set(ISweptBody target, boolean overlap, float nx, float ny, float ht, boolean res){
+        public Collision set(ISweptBody target, boolean overlap, byte nx, byte ny, float ht, boolean res){
             this.target = target;
             this.isOverlapping = overlap;
             this.normalX = nx;

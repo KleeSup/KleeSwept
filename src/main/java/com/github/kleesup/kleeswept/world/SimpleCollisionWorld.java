@@ -2,11 +2,11 @@ package com.github.kleesup.kleeswept.world;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.KleeSweptDetection;
-import com.github.kleesup.kleeswept.util.CollisionComparatorBuilder;
+import com.github.kleesup.kleeswept.util.BytePair;
+import com.github.kleesup.kleeswept.util.CollisionSorter;
 import com.github.kleesup.kleeswept.util.Single;
 import com.github.kleesup.kleeswept.world.body.ISweptBody;
 import com.github.kleesup.kleeswept.world.chunk.AbstractChunkCollisionWorld;
@@ -20,61 +20,28 @@ import java.util.*;
  * If this is not wanted a custom implementation is required. The class is NOT Thread-Safe!
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.3
+ * @version 1.4
  * @since 1.0.1
  */
 public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
 
     private final Map<Body, Rectangle> boundingBoxes = new IdentityHashMap<>();
-    private final CollisionComparatorBuilder<Body> defaultBuilder;
-    private final Pool<CollisionResponse.Collision> pool;
-    private CollisionComparatorBuilder<Body> builder;
+    private final Pool<CollisionResponse.Collision> poolCollisions;
+    private CollisionSorter<Body> sorter;
     private boolean sort = true;
 
     public SimpleCollisionWorld(int chunkSize) {
         super(chunkSize, new EfficientChunkManager<>());
         //sorting collisions for smallest collision time, if it is the same -> sort for highest velocity axis
-        this.defaultBuilder = new CollisionComparatorBuilder<Body>() {
-            @Override
-            public Comparator<CollisionResponse.Collision> build(Body body, Vector2 displacement, float newWidth, float newHeight) {
-                return new Comparator<CollisionResponse.Collision>() {
-                    @Override
-                    public int compare(CollisionResponse.Collision c1, CollisionResponse.Collision c2) {
-                        if(c1.hitTime == c2.hitTime){
-                            if(_displacement.x > _displacement.y){
-                                if(c1.normalX != 0 && c2.normalX == 0){
-                                    return -1;
-                                }else if(c1.normalX == 0 && c2.normalX != 0){
-                                    return 1;
-                                }else{
-                                    return 0;
-                                }
-                            }else if(_displacement.x < _displacement.y){
-                                if(c1.normalY != 0 && c2.normalY == 0){
-                                    return -1;
-                                }else if(c1.normalY == 0 && c2.normalY != 0){
-                                    return 1;
-                                }else{
-                                    return 0;
-                                }
-                            }else{
-                                return 0;
-                            }
-                        }else{
-                            return Float.compare(c1.hitTime, c2.hitTime);
-                        }
-                    }
-                };
-            }
-        };
-        setDefaultComparatorBuilder();
+        setDefaultSorter();
         //build pool
-        this.pool = new Pool<CollisionResponse.Collision>() {
+        this.poolCollisions = new Pool<CollisionResponse.Collision>() {
             @Override
             protected CollisionResponse.Collision newObject() {
                 return new CollisionResponse.Collision();
             }
         };
+        this.poolCollisions.fill(5);
     }
 
     @Override
@@ -121,9 +88,9 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     public Rectangle getBoundingBox(Body body) {
         return getBoundingBox(body, new Rectangle());
     }
+    @Override
     public Rectangle getBoundingBox(Body body, Rectangle copyTo) {
         validateAABB(body);
-        if(copyTo == null)copyTo = new Rectangle();
         return copyTo.set(getOriginalBoundingBox(body));
     }
 
@@ -165,7 +132,7 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     private final Rectangle _moveArea = new Rectangle();
     private final Rectangle _goalRect = new Rectangle();
     private final Vector2 _displacement = new Vector2();
-    private final Vector2 _normal = new Vector2();
+    private final BytePair _normal = new BytePair();
     private final Rectangle _sum = new Rectangle();
     private final Single<Float> _hitTime = new Single<>(0f);
     private final Vector2 _rayHit = new Vector2();
@@ -219,12 +186,15 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
                 Rectangle other = getOriginalBoundingBox(target);
                 //now collision gets checked
                 boolean hit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
-                if(hit)finalizedResponse.getCollisions().add(pool.obtain().set(target, goalRect.overlaps(other), _normal.x, _normal.y,_hitTime.get(), false));
+                if(hit)finalizedResponse.getCollisions().add(poolCollisions.obtain().set(target, goalRect.overlaps(other), _normal.x, _normal.y,_hitTime.get(), false));
             }
         });
 
         //sorting collisions
-        finalizedResponse.getCollisions().sort(builder.build(body, _displacement, width, height));
+        if(sort){
+            if(sorter.needFullInfo())sorter.set(this,body,_displacement,width,height);
+            finalizedResponse.getCollisions().sort(sorter);
+        }
 
         copyList.addAll(finalizedResponse.getCollisions()); //copy to separate to avoid ConcurrentModificationException
         //resolving collisions
@@ -263,31 +233,46 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
 
     /**
      * Sets the current comparator builder used for collision resolution.
-     * @param builder The builder to set.
+     * @param sorter The sorter to set.
      */
-    public void setComparatorBuilder(CollisionComparatorBuilder<Body> builder) {
-        this.builder = builder;
+    public void setSorter(CollisionSorter<Body> sorter) {
+        this.sorter = sorter;
     }
 
+    /**
+     * Enables or disables sorting of collisions. If some sort of tile world is used, this should be {@code true} to
+     * avoid problems. If not this can be set to {@code false} to spare iteration time.
+     * @param enabled Whether sorting should be enabled.
+     */
     public void setSort(boolean enabled) {
         this.sort = enabled;
     }
 
     /**
-     * Sets the builder back to the default builder.
+     * Sets the sorter back to the default sorter.
      */
-    public void setDefaultComparatorBuilder() {
-        this.builder = defaultBuilder;
+    public void setDefaultSorter() {
+        this.sorter = CollisionSorter.buildSmallestTimeOrVelocity();
     }
 
+    /**
+     * Frees the given response object by freeing all collision objects and then clearing the response object.
+     * This method should be called after any collision checks have been done.
+     * @param response The response object to free.
+     */
     public void free(CollisionResponse response){
         for(CollisionResponse.Collision collision : response.getCollisions()){
             free(collision);
         }
         response.clear();
     }
+
+    /**
+     * Frees a collision into the pool.
+     * @param collision The collision to free.
+     */
     public void free(CollisionResponse.Collision collision){
-        pool.free(collision);
+        poolCollisions.free(collision);
     }
 
 
