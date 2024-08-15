@@ -1,5 +1,6 @@
 package com.github.kleesup.kleeswept.world;
 
+import com.badlogic.gdx.utils.Pool;
 import com.github.kleesup.kleeswept.world.body.ISweptBody;
 
 import java.util.*;
@@ -8,7 +9,7 @@ import java.util.*;
  * The object that is returned when a collision test was done.
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.1
+ * @version 1.2
  * @since 1.0.1
  */
 public class CollisionResponse {
@@ -40,11 +41,11 @@ public class CollisionResponse {
     /**
      * The single collision record for the AABB vs a targeted AABB.
      */
-    public static class Collision{
+    public static class Collision implements Pool.Poolable {
         /** The targeted AABB which was tested against **/
         public ISweptBody target;
-        /** Whether that AABB was hit in the test**/
-        public boolean isHit;
+        /** Whether that AABB is currently overlapping the targeted **/
+        public boolean isOverlapping;
         /**
          *  Interpretation:
          *  1.0f -> target AABB was hit on the right side.
@@ -70,15 +71,25 @@ public class CollisionResponse {
          */
         public boolean resolved;
 
-        public Collision(ISweptBody target, boolean isHit, float normalX, float normalY, float hitTime) {
+        public Collision(ISweptBody target, boolean isOverlapping, float normalX, float normalY, float hitTime) {
             this.target = target;
-            this.isHit = isHit;
+            this.isOverlapping = isOverlapping;
             this.normalX = normalX;
             this.normalY = normalY;
             this.hitTime = hitTime;
         }
 
         public Collision() {
+        }
+
+        public Collision set(ISweptBody target, boolean overlap, float nx, float ny, float ht, boolean res){
+            this.target = target;
+            this.isOverlapping = overlap;
+            this.normalX = nx;
+            this.normalY = ny;
+            this.hitTime = ht;
+            this.resolved = res;
+            return this;
         }
 
         public boolean wasHitHorizontally(){
@@ -101,6 +112,14 @@ public class CollisionResponse {
             return normalY == -1;
         }
 
+        @Override
+        public void reset() {
+            target = null;
+            isOverlapping = false;
+            normalX = 0;
+            normalY = 0;
+            hitTime = 0;
+        }
     }
 
 

@@ -10,7 +10,7 @@ import java.util.*;
  *
  * <br>Created on 22.04.2023</br>
  * @author KleeSup
- * @version 1.1
+ * @version 1.2
  * @since 1.0.0
  */
 public class KleeSweptDetection {
@@ -68,24 +68,23 @@ public class KleeSweptDetection {
      * @return Whether the ray hit the AABB.
      */
     public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, Vector2 normal, Single<Float> outHitTime){
-        KleeHelper.paramRequireNonNull(magnitude, "Magnitude cannot be null!");
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
-
         float lastEntry = Float.NEGATIVE_INFINITY;
         float firstExit = Float.POSITIVE_INFINITY;
 
         //magnitude should not be zero to avoid dividing by zero
         if(magnitude.x != 0){
-            float t1 = (aabb.getX() - x) / magnitude.x;
-            float t2 = (getMaxX(aabb) - x) / magnitude.x;
+            float inv = 1f / magnitude.x;
+            float t1 = (aabb.getX() - x) * inv;
+            float t2 = (getMaxX(aabb) - x) * inv;
             lastEntry = Math.max(lastEntry, Math.min(t1, t2));
             firstExit = Math.min(firstExit, Math.max(t1, t2));
         }else if (x <= aabb.getX() || x >= getMaxX(aabb)){
             return false;
         }
         if(magnitude.y != 0){
-            float t1 = (aabb.getY() - y) / magnitude.y;
-            float t2 = (getMaxY(aabb) - y) / magnitude.y;
+            float inv = 1f / magnitude.y;
+            float t1 = (aabb.getY() - y) * inv;
+            float t2 = (getMaxY(aabb) - y) * inv;
             lastEntry = Math.max(lastEntry, Math.min(t1, t2));
             firstExit = Math.min(firstExit, Math.max(t1, t2));
         }else if (y <= aabb.getY() || y >= getMaxY(aabb)){
@@ -105,8 +104,8 @@ public class KleeSweptDetection {
 
                 float dx = hitPosition.x - getCenterX(aabb);
                 float dy = hitPosition.y - getCenterY(aabb);
-                float px = (aabb.getWidth()/2) - Math.abs(dx);
-                float py = (aabb.getHeight()/2) - Math.abs(dy);
+                float px = (aabb.getWidth() * .5f) - Math.abs(dx);
+                float py = (aabb.getHeight() * .5f) - Math.abs(dy);
 
                 //calculating hit normal
                 if(px < py){
@@ -137,8 +136,6 @@ public class KleeSweptDetection {
      */
     public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, Vector2 normal,
                                                Rectangle tempSum, Vector2 tempRayHit, Single<Float> outHitTime){
-        KleeHelper.paramRequireNonNull(dynamicBox, "Dynamic AABB cannot be null!");
-        KleeHelper.paramRequireNonNull(staticBox, "Static AABB cannot be null!");
         if(displacement == null)displacement = new Vector2();
         KleeHelper.calculateSumAABB(dynamicBox, staticBox, tempSum);
 
@@ -161,7 +158,6 @@ public class KleeSweptDetection {
      */
     public static Collection<Rectangle> checkDynamicVsMultipleStatic(Rectangle dynamicBox, Collection<Rectangle> staticBoxes, Vector2 displacement, Vector2 tempNormal,
                                                        Rectangle tempSum, Vector2 tempRayHit){
-        KleeHelper.paramRequireNonNull(dynamicBox, "Dynamic AABB cannot be null");
         if(staticBoxes == null || staticBoxes.isEmpty())return staticBoxes != null ? staticBoxes : new ArrayList<>();
         if(tempNormal == null)tempNormal = new Vector2();
         if(tempSum == null)tempSum = new Rectangle();
@@ -217,7 +213,6 @@ public class KleeSweptDetection {
      */
     public static Map<Rectangle, Vector2> checkDynamicVsMultipleDynamic(Rectangle firstBox, Vector2 firstDisplacement, Map<Rectangle, Vector2> otherBoxes, Vector2 tempNormal,
                                                                             Rectangle tempSum,  Vector2 tempRayHit){
-        KleeHelper.paramRequireNonNull(firstBox, "Dynamic AABB cannot be null");
         if(otherBoxes == null || otherBoxes.isEmpty())return otherBoxes != null ? otherBoxes : new HashMap<>();
         if(tempNormal == null)tempNormal = new Vector2();
         if(tempSum == null)tempSum = new Rectangle();

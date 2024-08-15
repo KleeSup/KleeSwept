@@ -2,6 +2,8 @@ package com.github.kleesup.kleeswept.world;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.Pool;
 import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.KleeSweptDetection;
 import com.github.kleesup.kleeswept.util.CollisionComparatorBuilder;
@@ -18,14 +20,16 @@ import java.util.*;
  * If this is not wanted a custom implementation is required. The class is NOT Thread-Safe!
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.2
+ * @version 1.3
  * @since 1.0.1
  */
 public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
 
     private final Map<Body, Rectangle> boundingBoxes = new IdentityHashMap<>();
     private final CollisionComparatorBuilder<Body> defaultBuilder;
+    private final Pool<CollisionResponse.Collision> pool;
     private CollisionComparatorBuilder<Body> builder;
+    private boolean sort = true;
 
     public SimpleCollisionWorld(int chunkSize) {
         super(chunkSize, new EfficientChunkManager<>());
@@ -64,20 +68,37 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
             }
         };
         setDefaultComparatorBuilder();
+        //build pool
+        this.pool = new Pool<CollisionResponse.Collision>() {
+            @Override
+            protected CollisionResponse.Collision newObject() {
+                return new CollisionResponse.Collision();
+            }
+        };
     }
 
     @Override
     public void addBody(Body body, Rectangle boundingBox) {
-        KleeHelper.paramRequireNonNull(body, "AABB cannot be null!");
+        KleeHelper.paramRequireNonNull(body, "Body cannot be null!");
         KleeHelper.paramRequireNonNull(boundingBox, "Bounding box cannot be null!");
         if(boundingBoxes.containsKey(body))return;
-        boundingBoxes.put(body, boundingBox);
-        addToContainedChunks(body, boundingBox);
+        Rectangle bb = new Rectangle(boundingBox); //copy to own box to avoid errors.
+        boundingBoxes.put(body, bb);
+        addToContainedChunks(body, bb);
+    }
+
+    @Override
+    public void addBody(Body body, float bbX, float bbY, float bbWidth, float bbHeight) {
+        KleeHelper.paramRequireNonNull(body, "Body cannot be null!");
+        if(boundingBoxes.containsKey(body))return;
+        Rectangle bb = new Rectangle(bbX,bbY,bbWidth,bbHeight);
+        boundingBoxes.put(body, bb);
+        addToContainedChunks(body, bb);
     }
 
     @Override
     public Rectangle removeBody(Body body) {
-        KleeHelper.paramRequireNonNull(body, "AABB cannot be null!");
+        KleeHelper.paramRequireNonNull(body, "Body cannot be null!");
         if(!contains(body))return null;
         Rectangle boundingBox = getOriginalBoundingBox(body);
         removeFromContainedChunks(body, boundingBox);
@@ -116,8 +137,8 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     }
 
     private void validateAABB(Body body){
-        KleeHelper.paramRequireNonNull(body, "AABB cannot  be null!");
-        if(!contains(body))throw new IllegalArgumentException("The specified AABB is not contained in this world!");
+        KleeHelper.paramRequireNonNull(body, "Body cannot  be null!");
+        if(!contains(body))throw new IllegalArgumentException("The specified Body is not contained in this world!");
     }
 
     @Override
@@ -149,6 +170,7 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     private final Single<Float> _hitTime = new Single<>(0f);
     private final Vector2 _rayHit = new Vector2();
     private final Set<Body> _alreadyLooped = new HashSet<>();
+    private final ArrayList<CollisionResponse.Collision> copyList = new ArrayList<>();
 
     @Override
     public CollisionResponse update(Body body, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
@@ -193,30 +215,36 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
             for(Body target : bodies){
                 if(target.equals(body))continue;
                 if(!_alreadyLooped.add(target))continue; //skip if the AABB was already been tested
+                if(!body.checkCollision(target))continue; //skip if calculation isn't wanted
                 Rectangle other = getOriginalBoundingBox(target);
                 //now collision gets checked
                 boolean hit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
-                if(hit)finalizedResponse.getCollisions().add(new CollisionResponse.Collision(target, true, _normal.x, _normal.y,_hitTime.get()));
+                if(hit)finalizedResponse.getCollisions().add(pool.obtain().set(target, goalRect.overlaps(other), _normal.x, _normal.y,_hitTime.get(), false));
             }
         });
 
         //sorting collisions
         finalizedResponse.getCollisions().sort(builder.build(body, _displacement, width, height));
 
+        copyList.addAll(finalizedResponse.getCollisions()); //copy to separate to avoid ConcurrentModificationException
         //resolving collisions
-        for(CollisionResponse.Collision collision : finalizedResponse.getCollisions()){
+        for(CollisionResponse.Collision collision : copyList){
             Rectangle other = getOriginalBoundingBox((Body) collision.target);
-            collision.isHit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
+            boolean isHit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
+            if(!isHit){
+                finalizedResponse.getCollisions().remove(collision);
+                continue;
+            }
             collision.normalX = _normal.x;
             collision.normalY = _normal.y;
             collision.hitTime = _hitTime.get();
-            if(!collision.isHit)continue;
             if(body.resolveCollision(collision.target, collision)){
                 _displacement.x += collision.normalX * Math.abs(_displacement.x) * (1-collision.hitTime);
                 _displacement.y += collision.normalY * Math.abs(_displacement.y) * (1-collision.hitTime);
                 collision.resolved = true;
             }
         }
+        copyList.clear();
 
         //finally, write the best goal position into the response
         finalizedResponse.bestGoalX = rectangle.x + _displacement.x;
@@ -241,11 +269,27 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
         this.builder = builder;
     }
 
+    public void setSort(boolean enabled) {
+        this.sort = enabled;
+    }
+
     /**
      * Sets the builder back to the default builder.
      */
     public void setDefaultComparatorBuilder() {
         this.builder = defaultBuilder;
     }
+
+    public void free(CollisionResponse response){
+        for(CollisionResponse.Collision collision : response.getCollisions()){
+            free(collision);
+        }
+        response.clear();
+    }
+    public void free(CollisionResponse.Collision collision){
+        pool.free(collision);
+    }
+
+
 
 }
