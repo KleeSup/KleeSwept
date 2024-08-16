@@ -11,7 +11,7 @@ import java.util.function.BiConsumer;
  * An implementation of {@link CollisionWorld} which offers a chunk cache {@link IChunkManager}.
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.1
  */
 public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> implements CollisionWorld<Body> {
@@ -49,7 +49,6 @@ public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> imple
      */
     protected void forContainingChunk(Rectangle rectangle, BiConsumer<Integer, Integer> coordinateConsumer){
         if(coordinateConsumer == null)return;
-        KleeHelper.paramRequireNonNull(rectangle, "Rectangle cannot be null!");
         int minX = (int) rectangle.x;
         int minY = (int) rectangle.y;
         int maxX = (int) (rectangle.x + rectangle.width);
@@ -70,6 +69,19 @@ public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> imple
             }
         }
 
+    }
+
+    /**
+     * Checks whether a rectangles dimension only take up one chunk (the chunk it is currently in).
+     * @param rectangle The rectangle to check for.
+     * @return Whether it is contained in only one chunk.
+     */
+    protected boolean containedInOneChunk(Rectangle rectangle){
+        int minX = (int) rectangle.x / chunkSize;
+        int minY = (int) rectangle.y / chunkSize;
+        int maxX = (int) (rectangle.x + rectangle.width) / chunkSize;
+        int maxY = (int) (rectangle.y + rectangle.height) / chunkSize;
+        return minX == maxX && minY == maxY;
     }
 
 

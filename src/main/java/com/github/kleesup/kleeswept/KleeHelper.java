@@ -1,5 +1,6 @@
 package com.github.kleesup.kleeswept;
 
+import com.badlogic.gdx.math.Polygon;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
@@ -8,7 +9,7 @@ import com.badlogic.gdx.math.Vector2;
  * Simple utility class.
  * <br>Created on 17.04.2023</br>
  * @author KleeSup
- * @version 1.3
+ * @version 1.4
  * @since 1.0.0
  */
 public final class KleeHelper {
@@ -73,6 +74,77 @@ public final class KleeHelper {
      */
     public static long pairLong(int x, int y){
         return ((x & 0xFFFFFFFFL) | (y & 0xFFFFFFFFL) << 32);
+    }
+
+    /**
+     * Sets a polygon to fit a rectangle. This polygon is given and needs at least 4 vertexes!
+     * @param polygon The polygon to modify.
+     * @param x1 First corner x-value.
+     * @param y1 First corner y-value.
+     * @param x2 Second corner x-value.
+     * @param y2 Second corner y-value.
+     * @param x3 Third corner x-value.
+     * @param y3 Third corner y-value.
+     * @param x4 Fourth corner x-value.
+     * @param y4 Fourth corner y-value.
+     */
+    public static void setPolygonRect(Polygon polygon, float x1, float y1, float x2, float y2, float x3, float y3,
+                                      float x4, float y4){
+        polygon.getVertices()[0] = x1;
+        polygon.getVertices()[1] = y1;
+        polygon.getVertices()[2] = x2;
+        polygon.getVertices()[3] = y2;
+        polygon.getVertices()[4] = x3;
+        polygon.getVertices()[5] = y3;
+        polygon.getVertices()[6] = x4;
+        polygon.getVertices()[7] = y4;
+    }
+
+    /**
+     * See {@link #setPolygonRect(Polygon, float, float, float, float, float, float, float, float)}.
+     * @param polygon The polygon to modify (needs at least 4 vertexes).
+     * @param rectangle The rectangle to write into the polygon.
+     */
+    public static void setPolygonRect(Polygon polygon, Rectangle rectangle){
+       setPolygonRect(polygon,
+               rectangle.x, rectangle.y,
+               rectangle.x + rectangle.width, rectangle.y,
+               rectangle.x, rectangle.y + rectangle.height,
+               rectangle.x + rectangle.width, rectangle.y + rectangle.height
+       );
+    }
+
+    /**
+     * Creates a polygon that contains two rectangles and the space between them.
+     * This polygon will have and need 6 vertexes.
+     * The rectangle A represents the one of the smaller x-value and B the one with the higher x-value.
+     * If this condition isn't met, they are swapped. After that, the outside points which are always parts
+     * get added (being A bottom-left, top-left and B bottom-right and top-right). Depending on the position of
+     * the second rectangle, the connecting points are added.
+     * @param a The first rectangle (smaller x).
+     * @param b The second rectangle (higher x).
+     * @param goal The polygon to write to. Note: the polygon object needs at least 6 vertexes!
+     * @return The created polygon.
+     */
+    public static Polygon createMovementPolygon(Rectangle a, Rectangle b, Polygon goal){
+        if(a.x > b.x){ //need A to be the one in the smaller position, if not swap them
+            Rectangle swap = a;
+            a = b;
+            b = swap;
+        }
+        float[] vert = goal.getVertices();
+        vert[0] = a.x; vert[1] = a.y;
+        vert[2] = a.x; vert[3] = a.y + a.height;
+        vert[4] = b.x + b.width; vert[5] = b.y;
+        vert[6] = b.x + b.width; vert[7] = b.y + b.height;
+        if(b.y > a.y){ //top-right
+            vert[8] = a.x + a.width; vert[9] = a.y;
+            vert[10] = b.x; vert[11] = b.y + b.height;
+        }else{ //bottom-right
+            vert[8] = a.x + a.width; vert[9] = a.y + a.height;
+            vert[10] = b.x; vert[11] = b.y;
+        }
+        return goal;
     }
 
 }

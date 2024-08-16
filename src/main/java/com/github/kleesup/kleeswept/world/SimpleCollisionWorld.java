@@ -1,5 +1,7 @@
 package com.github.kleesup.kleeswept.world;
 
+import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.Polygon;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Pool;
@@ -20,7 +22,7 @@ import java.util.*;
  * If this is not wanted a custom implementation is required. The class is NOT Thread-Safe!
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.4
+ * @version 1.5
  * @since 1.0.1
  */
 public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
@@ -114,12 +116,15 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
         Rectangle boundingBox = getOriginalBoundingBox(body);
         //return if the AABB didn't move or change size
         if(goalX == boundingBox.x && goalY == boundingBox.y && width == boundingBox.width && height == boundingBox.height)return;
+        _goalRect.set(goalX,goalY,width,height);
+        _moveArea.set(boundingBox).merge(_goalRect);
+        boolean needChunkChange = !containedInOneChunk(_moveArea); //only if moved out of chunk a change is necessary
         //remove from all chunks
-        removeFromContainedChunks(body, boundingBox);
+        if(needChunkChange)removeFromContainedChunks(body, boundingBox);
         //change size & location
         boundingBox.set(goalX, goalY, width, height);
         //add new to all chunks
-        addToContainedChunks(body, boundingBox);
+        if(needChunkChange)addToContainedChunks(body, boundingBox);
     }
     @Override
     public void forceUpdate(Body body, float goalX, float goalY){
@@ -136,8 +141,10 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     private final Rectangle _sum = new Rectangle();
     private final Single<Float> _hitTime = new Single<>(0f);
     private final Vector2 _rayHit = new Vector2();
-    private final Set<Body> _alreadyLooped = new HashSet<>();
+    private final HashSet<Body> _alreadyLooped = new HashSet<>(8);
     private final ArrayList<CollisionResponse.Collision> copyList = new ArrayList<>();
+    private final Polygon _correctMoveArea = new Polygon(new float[6 * 2]);
+    private final Polygon _chunkPol = new Polygon(new float[4 * 2]);
 
     @Override
     public CollisionResponse update(Body body, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
@@ -159,7 +166,7 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     public CollisionResponse simulate(Body body, Vector2 displacement, float width, float height, CollisionResponse writeTo) {
         validateAABB(body);
         if(writeTo == null)writeTo = new CollisionResponse();
-        writeTo.clear();
+        else writeTo.clear();
         writeTo.body = body;
         Rectangle rectangle = getOriginalBoundingBox(body);
         //set the displacement
@@ -172,31 +179,53 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
 
         //define the area the rectangle will move in
         Rectangle holeMovementArea = _moveArea.set(rectangle).merge(goalRect);
+
         _alreadyLooped.clear();
         //making the response object final, so it can be used in the lambda statement
         final CollisionResponse finalizedResponse = writeTo;
+        //if we have a diagonal movement and the hole movement isn't only one chunk, find the polygon area.
+        boolean needPolygon = (_displacement.x != 0 && _displacement.y != 0) && !containedInOneChunk(holeMovementArea);
+        if(needPolygon)KleeHelper.createMovementPolygon(rectangle, goalRect, _correctMoveArea);
         //loop chunks in the area from start to goal position
         forContainingChunk(holeMovementArea, (chunkX, chunkY) -> {
             Set<Body> bodies = chunkManager.getBodies(chunkX,chunkY);
+            //if chunk is empty or only body is the own, skip the chunk.
+            if(bodies == null || bodies.isEmpty() || (bodies.size() == 1 && bodies.contains(body)))return;
+            if(needPolygon){
+                //check if polygon intersect with chunk
+                int minX = chunkX * chunkSize, minY = chunkY * chunkSize;
+                int maxX = minX + chunkX, maxY = minY + chunkX;
+                KleeHelper.setPolygonRect(_chunkPol,
+                        minX, minY,
+                        maxX, minY,
+                        minX, maxY,
+                        maxX, maxY);
+                //if the polygon movement area doesn't intersect chunk, skip.
+                if(!Intersector.overlapConvexPolygons(_correctMoveArea, _chunkPol))return;
+            }
             //for all AABBs in the chunk
             for(Body target : bodies){
                 if(target.equals(body))continue;
                 if(!_alreadyLooped.add(target))continue; //skip if the AABB was already been tested
                 if(!body.checkCollision(target))continue; //skip if calculation isn't wanted
                 Rectangle other = getOriginalBoundingBox(target);
+                if(!_moveArea.overlaps(other))continue; //if the hole area containing the movement doesn't touch the
+                                                        //body, no checks are required -> out of collision range.
                 //now collision gets checked
                 boolean hit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
                 if(hit)finalizedResponse.getCollisions().add(poolCollisions.obtain().set(target, goalRect.overlaps(other), _normal.x, _normal.y,_hitTime.get(), false));
             }
         });
 
-        //sorting collisions
-        if(sort){
+        //sorting collisions if sorting is enabled and there collisions is more than 1
+        if(sort && finalizedResponse.getCollisions().size() > 1){
             if(sorter.needFullInfo())sorter.set(this,body,_displacement,width,height);
             finalizedResponse.getCollisions().sort(sorter);
         }
 
-        copyList.addAll(finalizedResponse.getCollisions()); //copy to separate to avoid ConcurrentModificationException
+        //copy to separate to avoid ConcurrentModificationException
+        if(!finalizedResponse.getCollisions().isEmpty())
+            copyList.addAll(finalizedResponse.getCollisions());
         //resolving collisions
         for(CollisionResponse.Collision collision : copyList){
             Rectangle other = getOriginalBoundingBox((Body) collision.target);

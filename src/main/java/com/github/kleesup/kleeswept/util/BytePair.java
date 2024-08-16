@@ -1,6 +1,7 @@
 package com.github.kleesup.kleeswept.util;
 
 /**
+ * Utility class that holds two bytes.
  * @author KleeSup
  * @since 1.1
  * @version 1.0

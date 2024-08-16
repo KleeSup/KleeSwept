@@ -1,5 +1,6 @@
 package com.github.kleesup.kleeswept.world.chunk;
 
+import com.badlogic.gdx.utils.LongMap;
 import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.world.body.ISweptBody;
 
@@ -13,27 +14,35 @@ import java.util.function.Function;
  * This method reduces object heap as it is not necessary to create a wrapper object for the chunk coordinates (e.g. {@link com.badlogic.gdx.math.Vector2}).
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.0
+ * @version 1.1
  * @since 1.0.1
  */
 public class EfficientChunkManager<Body extends ISweptBody> implements IChunkManager<Body> {
 
     private final Function<Long, Set<Body>> builderFunc = pair -> new HashSet<>();
 
-    private final Map<Long, Set<Body>> chunks = new HashMap<>();
+    private final LongMap<Set<Body>> chunks = new LongMap<>();
 
     @Override
     public Set<Body> getBodies(int chunkX, int chunkY) {
         long pair = KleeHelper.pairLong(chunkX, chunkY);
-        return chunks.getOrDefault(pair, Collections.EMPTY_SET);
+        return chunks.get(pair, Collections.EMPTY_SET);
     }
 
     @Override
     public void addBody(int chunkX, int chunkY, Body aabb) {
-        KleeHelper.paramRequireNonNull(aabb, "AABB cannot be null!");
+        KleeHelper.paramRequireNonNull(aabb, "Body cannot be null!");
         long pair = KleeHelper.pairLong(chunkX,chunkY);
-        Set<Body> bodies = chunks.computeIfAbsent(pair, builderFunc);
+        Set<Body> bodies = computeIfAbsent(pair);
         bodies.add(aabb);
+    }
+
+    private Set<Body> computeIfAbsent(long key){
+        Set<Body> bodies = chunks.get(key);
+        if(bodies == null){
+            chunks.put(key, bodies = new HashSet<>());
+        }
+        return bodies;
     }
 
     @Override

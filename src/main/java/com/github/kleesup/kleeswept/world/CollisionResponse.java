@@ -1,6 +1,7 @@
 package com.github.kleesup.kleeswept.world;
 
 import com.badlogic.gdx.utils.Pool;
+import com.badlogic.gdx.utils.PooledLinkedList;
 import com.github.kleesup.kleeswept.world.body.ISweptBody;
 
 import java.util.*;
@@ -9,7 +10,7 @@ import java.util.*;
  * The object that is returned when a collision test was done.
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.3
+ * @version 1.4
  * @since 1.0.1
  */
 public class CollisionResponse {
@@ -24,7 +25,7 @@ public class CollisionResponse {
     public float updatedDisplacementX;
     /** The updated displacement y (already calculated into {@link #bestGoalY}). **/
     public float updatedDisplacementY;
-    private final List<Collision> collisions = new LinkedList<>();
+    private final List<Collision> collisions = new ArrayList<>(8);
 
     /**
      * Clears the object so it can be reused.
