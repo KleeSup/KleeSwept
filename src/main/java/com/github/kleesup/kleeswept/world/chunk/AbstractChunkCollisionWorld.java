@@ -11,7 +11,7 @@ import java.util.function.BiConsumer;
  * An implementation of {@link CollisionWorld} which offers a chunk cache {@link IChunkManager}.
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.1
+ * @version 1.2
  * @since 1.0.1
  */
 public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> implements CollisionWorld<Body> {
@@ -19,9 +19,12 @@ public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> imple
     protected final IChunkManager<Body> chunkManager;
 
     protected final int chunkSize;
+    protected final float invChunkSize;
     protected AbstractChunkCollisionWorld(int chunkSize, IChunkManager<Body> chunkManager){
+        if(chunkSize < 1)throw new IllegalArgumentException("The chunk size cannot be smaller than 1!");
         this.chunkSize = chunkSize;
         this.chunkManager = chunkManager;
+        this.invChunkSize = 1f / chunkSize;
     }
 
     /**
@@ -49,15 +52,10 @@ public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> imple
      */
     protected void forContainingChunk(Rectangle rectangle, BiConsumer<Integer, Integer> coordinateConsumer){
         if(coordinateConsumer == null)return;
-        int minX = (int) rectangle.x;
-        int minY = (int) rectangle.y;
-        int maxX = (int) (rectangle.x + rectangle.width);
-        int maxY = (int) (rectangle.y + rectangle.height);
-
-        int chunksX = maxX / chunkSize;
-        int chunksY = maxY / chunkSize;
-        int startChunkX = minX / chunkSize;
-        int startChunkY = minY / chunkSize;
+        int chunksX = KleeHelper.chunkFloor((rectangle.x + rectangle.width) * invChunkSize);
+        int chunksY = KleeHelper.chunkFloor((rectangle.y + rectangle.height) * invChunkSize);;
+        int startChunkX = KleeHelper.chunkFloor(rectangle.x * invChunkSize);
+        int startChunkY = KleeHelper.chunkFloor(rectangle.y * invChunkSize);
         //in case the hole rectangle is only in one chunk
         if(startChunkX == chunksX && startChunkY == chunksY){
             coordinateConsumer.accept(startChunkX, startChunkY);
@@ -77,10 +75,10 @@ public abstract class AbstractChunkCollisionWorld<Body extends ISweptBody> imple
      * @return Whether it is contained in only one chunk.
      */
     protected boolean containedInOneChunk(Rectangle rectangle){
-        int minX = (int) rectangle.x / chunkSize;
-        int minY = (int) rectangle.y / chunkSize;
-        int maxX = (int) (rectangle.x + rectangle.width) / chunkSize;
-        int maxY = (int) (rectangle.y + rectangle.height) / chunkSize;
+        int minX = KleeHelper.chunkFloor(rectangle.x * invChunkSize);
+        int minY = KleeHelper.chunkFloor(rectangle.y * invChunkSize);
+        int maxX = KleeHelper.chunkFloor((rectangle.x + rectangle.width) * invChunkSize);
+        int maxY = KleeHelper.chunkFloor((rectangle.y + rectangle.height) * invChunkSize);
         return minX == maxX && minY == maxY;
     }
 

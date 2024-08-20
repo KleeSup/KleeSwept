@@ -9,7 +9,7 @@ import com.badlogic.gdx.math.Vector2;
  * Simple utility class.
  * <br>Created on 17.04.2023</br>
  * @author KleeSup
- * @version 1.4
+ * @version 1.5
  * @since 1.0.0
  */
 public final class KleeHelper {
@@ -133,18 +133,38 @@ public final class KleeHelper {
             b = swap;
         }
         float[] vert = goal.getVertices();
-        vert[0] = a.x; vert[1] = a.y;
-        vert[2] = a.x; vert[3] = a.y + a.height;
-        vert[4] = b.x + b.width; vert[5] = b.y;
-        vert[6] = b.x + b.width; vert[7] = b.y + b.height;
         if(b.y > a.y){ //top-right
-            vert[8] = a.x + a.width; vert[9] = a.y;
-            vert[10] = b.x; vert[11] = b.y + b.height;
+            vert[0] = a.x; vert[1] = a.y;
+            vert[2] = a.x + a.width; vert[3] = a.y;
+            vert[4] = b.x + b.width; vert[5] = b.y;
+            vert[6] = b.x + b.width; vert[7] = b.y + b.height;
+            vert[8] = b.x; vert[9] = b.y + b.height;
+            vert[10] = a.x; vert[11] = a.y + a.height;
         }else{ //bottom-right
+            vert[0] = a.x; vert[1] = a.y;
+            vert[2] = b.x; vert[3] = b.y;
+            vert[4] = b.x + b.width; vert[5] = b.y;
+            vert[6] = b.x + b.width; vert[7] = b.y + b.height;
             vert[8] = a.x + a.width; vert[9] = a.y + a.height;
-            vert[10] = b.x; vert[11] = b.y;
+            vert[10] = a.x; vert[11] = a.y + a.height;
         }
+        goal.setVertices(vert);
         return goal;
+    }
+
+    /**
+     * Floors a value to a int value. This means:
+     * <l>
+     *     <li>Number {@code 0} will return {@code 0}</li>
+     *     <li>Numbers bigger than {@code 0} will return their int value (1.5 -> 1, 1.9 -> 1, 5.3421 -> 5)</li>
+     *     <li>Numbers smaller than {@code 0} will return their int value (and minus 1 if they have a decimal point,
+     *     therefore -1.5 -> -2 but -3 -> -3)</li>
+     * </l>
+     * @param input The input value to floor.
+     * @return The transformed int value.
+     */
+    public static int chunkFloor(float input){
+        return input >= 0 ? (int) input : (input % 1 == 0 ? (int) input : (int) input - 1);
     }
 
 }

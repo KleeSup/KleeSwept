@@ -3,7 +3,7 @@ package com.github.kleesup.kleeswept;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.github.kleesup.kleeswept.util.BytePair;
-import com.github.kleesup.kleeswept.util.Single;
+import com.github.kleesup.kleeswept.util.FloatWrap;
 
 import java.util.*;
 
@@ -11,10 +11,13 @@ import java.util.*;
  *
  * <br>Created on 22.04.2023</br>
  * @author KleeSup
- * @version 1.3
+ * @version 1.4
  * @since 1.0.0
  */
 public class KleeSweptDetection {
+
+    /** A small offset value to reduce floating point imprecision. Defaults to {@code 1e-5f}. */
+    public static float DELTA = 1e-5f;
 
     /*
     Specified getters for AABBs.
@@ -68,7 +71,7 @@ public class KleeSweptDetection {
      * @param normal Required to write the ray-hit normal.
      * @return Whether the ray hit the AABB.
      */
-    public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, BytePair normal, Single<Float> outHitTime){
+    public static boolean doesRayIntersectAABB(float x, float y, Vector2 magnitude, Rectangle aabb, Vector2 hitPosition, BytePair normal, FloatWrap outHitTime){
         float lastEntry = Float.NEGATIVE_INFINITY;
         float firstExit = Float.POSITIVE_INFINITY;
 
@@ -93,7 +96,11 @@ public class KleeSweptDetection {
         }
 
         //condition for a collision
-        if(firstExit > lastEntry && firstExit > 0 && lastEntry < 1){
+        if(firstExit > lastEntry &&
+                firstExit > 0 &&
+                lastEntry < 1 &&
+                Math.abs(lastEntry - firstExit) >= DELTA && //imprecision detection
+                (lastEntry >= 0 || Math.abs(lastEntry) < DELTA)){
             if(hitPosition == null)hitPosition = new Vector2();
             hitPosition.set(x + magnitude.x * lastEntry, y + magnitude.y * lastEntry);
 
@@ -136,7 +143,7 @@ public class KleeSweptDetection {
      * @return {@code true} if the dynamic aabb collides with the static aabb, {@code false} otherwise.
      */
     public static boolean checkDynamicVsStatic(Rectangle dynamicBox, Rectangle staticBox, Vector2 displacement, BytePair normal,
-                                               Rectangle tempSum, Vector2 tempRayHit, Single<Float> outHitTime){
+                                               Rectangle tempSum, Vector2 tempRayHit, FloatWrap outHitTime){
         if(displacement == null)displacement = new Vector2();
         KleeHelper.calculateSumAABB(dynamicBox, staticBox, tempSum);
 

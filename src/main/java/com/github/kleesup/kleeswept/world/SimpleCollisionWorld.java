@@ -1,6 +1,5 @@
 package com.github.kleesup.kleeswept.world;
 
-import com.badlogic.gdx.math.Intersector;
 import com.badlogic.gdx.math.Polygon;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
@@ -9,7 +8,7 @@ import com.github.kleesup.kleeswept.KleeHelper;
 import com.github.kleesup.kleeswept.KleeSweptDetection;
 import com.github.kleesup.kleeswept.util.BytePair;
 import com.github.kleesup.kleeswept.util.CollisionSorter;
-import com.github.kleesup.kleeswept.util.Single;
+import com.github.kleesup.kleeswept.util.FloatWrap;
 import com.github.kleesup.kleeswept.world.body.ISweptBody;
 import com.github.kleesup.kleeswept.world.chunk.AbstractChunkCollisionWorld;
 import com.github.kleesup.kleeswept.world.chunk.EfficientChunkManager;
@@ -22,12 +21,12 @@ import java.util.*;
  * If this is not wanted a custom implementation is required. The class is NOT Thread-Safe!
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.5
+ * @version 1.6
  * @since 1.0.1
  */
 public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunkCollisionWorld<Body> {
 
-    private final Map<Body, Rectangle> boundingBoxes = new IdentityHashMap<>();
+    private final IdentityHashMap<Body, Rectangle> boundingBoxes = new IdentityHashMap<>();
     private final Pool<CollisionResponse.Collision> poolCollisions;
     private CollisionSorter<Body> sorter;
     private boolean sort = true;
@@ -44,6 +43,9 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
             }
         };
         this.poolCollisions.fill(5);
+    }
+    public SimpleCollisionWorld(){
+        this(32);
     }
 
     @Override
@@ -139,7 +141,7 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
     private final Vector2 _displacement = new Vector2();
     private final BytePair _normal = new BytePair();
     private final Rectangle _sum = new Rectangle();
-    private final Single<Float> _hitTime = new Single<>(0f);
+    private final FloatWrap _hitTime = new FloatWrap(0f);
     private final Vector2 _rayHit = new Vector2();
     private final HashSet<Body> _alreadyLooped = new HashSet<>(8);
     private final ArrayList<CollisionResponse.Collision> copyList = new ArrayList<>();
@@ -183,26 +185,37 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
         _alreadyLooped.clear();
         //making the response object final, so it can be used in the lambda statement
         final CollisionResponse finalizedResponse = writeTo;
+
         //if we have a diagonal movement and the hole movement isn't only one chunk, find the polygon area.
-        boolean needPolygon = (_displacement.x != 0 && _displacement.y != 0) && !containedInOneChunk(holeMovementArea);
-        if(needPolygon)KleeHelper.createMovementPolygon(rectangle, goalRect, _correctMoveArea);
+        /*
+        Currently, due to a lot of testing issues the polygon part is removed. Maybe it is implemented later
+        when I have more time testing here. This is currently just not worth the benefit. Also, the method
+        Intersector#overlapsConvexPolygon() can be considered relatively expensive and if the library is used
+        correctly (with the correct chunkSize in comparison with shape sizes), this might be more expensive than
+        usefully. The check if a body overlaps the hole movement rectangle should be enough and relatively fast
+        for now.
+        */
+        //boolean needPolygon = (_displacement.x != 0 && _displacement.y != 0) && !containedInOneChunk(holeMovementArea);
+        //if(needPolygon)KleeHelper.createMovementPolygon(rectangle, goalRect, _correctMoveArea);
+
         //loop chunks in the area from start to goal position
         forContainingChunk(holeMovementArea, (chunkX, chunkY) -> {
             Set<Body> bodies = chunkManager.getBodies(chunkX,chunkY);
             //if chunk is empty or only body is the own, skip the chunk.
             if(bodies == null || bodies.isEmpty() || (bodies.size() == 1 && bodies.contains(body)))return;
+            /*
             if(needPolygon){
                 //check if polygon intersect with chunk
                 int minX = chunkX * chunkSize, minY = chunkY * chunkSize;
-                int maxX = minX + chunkX, maxY = minY + chunkX;
+                int maxX = minX + chunkSize, maxY = minY + chunkSize;
                 KleeHelper.setPolygonRect(_chunkPol,
                         minX, minY,
                         maxX, minY,
-                        minX, maxY,
-                        maxX, maxY);
+                        maxX, maxY,
+                        minX, maxY);
                 //if the polygon movement area doesn't intersect chunk, skip.
                 if(!Intersector.overlapConvexPolygons(_correctMoveArea, _chunkPol))return;
-            }
+            }*/
             //for all AABBs in the chunk
             for(Body target : bodies){
                 if(target.equals(body))continue;
@@ -230,20 +243,24 @@ public class SimpleCollisionWorld<Body extends ISweptBody> extends AbstractChunk
         for(CollisionResponse.Collision collision : copyList){
             Rectangle other = getOriginalBoundingBox((Body) collision.target);
             boolean isHit = KleeSweptDetection.checkDynamicVsStatic(rectangle, other, _displacement, _normal.setZero(), _sum, _rayHit.setZero(), _hitTime);
-            if(!isHit){
+            if(!isHit){ //through ordering there might be collisions that are already "resolved", if so remove them.
                 finalizedResponse.getCollisions().remove(collision);
                 continue;
             }
             collision.normalX = _normal.x;
             collision.normalY = _normal.y;
             collision.hitTime = _hitTime.get();
-            if(body.resolveCollision(collision.target, collision)){
+            if(body.resolveCollision(collision.target, collision, _displacement)){
                 _displacement.x += collision.normalX * Math.abs(_displacement.x) * (1-collision.hitTime);
                 _displacement.y += collision.normalY * Math.abs(_displacement.y) * (1-collision.hitTime);
+                //int casting velocity, added for testing but might keep it in a future update
+                //float epsilon = KleeSweptDetection.DELTA;
+                //if(Math.abs(_displacement.x - (int)_displacement.x) < epsilon)_displacement.x = (int)_displacement.x;
+                //if(Math.abs(_displacement.y - (int)_displacement.y) < epsilon)_displacement.y = (int)_displacement.y;
                 collision.resolved = true;
             }
         }
-        copyList.clear();
+        if(!copyList.isEmpty())copyList.clear();
 
         //finally, write the best goal position into the response
         finalizedResponse.bestGoalX = rectangle.x + _displacement.x;

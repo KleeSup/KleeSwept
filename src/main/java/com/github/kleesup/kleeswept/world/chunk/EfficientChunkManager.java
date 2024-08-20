@@ -14,12 +14,10 @@ import java.util.function.Function;
  * This method reduces object heap as it is not necessary to create a wrapper object for the chunk coordinates (e.g. {@link com.badlogic.gdx.math.Vector2}).
  * <br>Created on 13.09.2023</br>
  * @author KleeSup
- * @version 1.1
+ * @version 1.2
  * @since 1.0.1
  */
 public class EfficientChunkManager<Body extends ISweptBody> implements IChunkManager<Body> {
-
-    private final Function<Long, Set<Body>> builderFunc = pair -> new HashSet<>();
 
     private final LongMap<Set<Body>> chunks = new LongMap<>();
 
@@ -39,9 +37,7 @@ public class EfficientChunkManager<Body extends ISweptBody> implements IChunkMan
 
     private Set<Body> computeIfAbsent(long key){
         Set<Body> bodies = chunks.get(key);
-        if(bodies == null){
-            chunks.put(key, bodies = new HashSet<>());
-        }
+        if(bodies == null)chunks.put(key, bodies = Collections.newSetFromMap(new IdentityHashMap<>()));
         return bodies;
     }
 
